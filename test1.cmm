@@ -1,0 +1,13 @@
+
+{
+	int a;
+	float b
+	boolean c=0;
+}
+{
+	a=b+c;
+	print(q);
+	float w;
+	read ()a
+	end while
+}
