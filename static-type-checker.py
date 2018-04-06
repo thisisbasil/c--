@@ -1,75 +1,9 @@
 #!/usr/bin/env python3
 
-
 '''
 Basil Huffman
  bahuffma@gwmail.gwu.edu
-
- The following assumptions were made after reading the grammar and sample data,
- and speaking after with Dr. Bellaachia regarding clarification:
-
- - Comments are single line only, prefaced by //, all comments ignored i.e. stripped out
- - Only one statement allowed per line, except comments succeeding a statement
- - as corollary, multiple statements present in one line will be split into two lines:
-
- 	int a; boolean b;
-
- 	becomes
-
- 	int a;
- 	boolean b;
-
- 	and line numbers will change accordingly
-
- - C-- is like Pascal in that the opening block contains nothing but declarations,
-   while the second block acts as the programmatic code, in which variable declarations
-   are not allowed
- - All blank lines are igored, line numbers are based on lines containing symbols
- - Syntax checking for tokens not residing inside of a block is limited to messages
-   indicating as such, more in-depth syntax checking done within blocks
- - Statements do not span multiple lines i.e. all lines must terminate with a semicolon ( ; ),
-   unless the line is one of the following special cases:
-   + a comment
-   + an open block ( { )
-   + a close block ( } )
-   + the EOL of an if expression, which ends in ( : ). From what I gather, the syntax of an if
-     statement is:
-
-     	if bool_stmt :
-     	{
-     					// statement block
-     	}
-     	else: 			//optional
-     	{
-     					// optional statement block
-     	}
-     	end if;
-
-   + the EOL of a while expression, which ends in ( do ). From what I gather, the syntax of a
-     while statement is:
-
-        while bool_stmt do
-        {
-    					// statement block
-        }
-        end while;
- - as a corollary, a semicolon ( ; ) alone on a line in permitted, acts as a no-op and is
-   allowed in both blocks
- - the first open bracket ( { ) triggers the var declaration block,
-   all subsequent open braces are ignored. the first open brace after the var declaration
-   block triggers the statement block
- - the first close bracket ( } ) triggers the end of the var declaration block. the
-   final close bracket triggers the end of the statement block. if there is no terminating
-   close bracket, a syntax error occurs
- - only two blocks exist: var declaration and statement. any blocks outside of these two
-   will be considered syntax errors
- - sub-blocks can only be defined through if and while statements. a consequence of this is
-   that no sub-blocks can exist within the var declaration block
- - subsequently, symbols will be undefined when encountered in an invalid statement
 '''
-
-
-
 
 import re
 import sys
@@ -85,7 +19,7 @@ reserved = {'int':'type','boolean':'type','float':'type',
 		'or':'or_stmt','>':'rel_stmt','<':'rel_stmt','>=':'rel_stmt',
 		'==':'rel_stmt','(':'open_paren',')':'close_paren',
 		'{':'open_brace', '}':'close_brace', '//':'comment',';':'semicolon'}
-types={"int":0,"boolean":1,"float":2}
+types={0:"VAR_CODE_INT", 1:"VAR_CODE_FLOAT", 2:"VAR_CODE_BOOLEAN"}
 codes={"undefined":"unrecognized symbol. ",
 	   "wrong_block":"statement not permitted in block. ",
 	   "begin_var":"beginning of var declaration block. ",
@@ -227,22 +161,26 @@ class TypeChecker:
         self.prog = tokens
         self.curr = ""
         self.next = ""
+        self.errors=""
         self.flags = Flags()
         self.braceStack=[]
+        self.symbols={}
+        self.i = self.j = 0
 
-    def _checkBrace(self,token):
-        if token not in ['{','}']:
+    # checks braces to determine which block you're in
+    def _checkBrace(self):
+        if self.token not in ['{','}']:
             return
 
-        if token == '{':
-            self.braceStack.append(token)
+        if self.token == '{':
+            self.braceStack.append(self.token)
             if len(self.braceStack) == 1:
                 if not self.flags.doneVarBlock:
-                    sys.stdout.write(" in var ")
+                    #sys.stdout.write(" in var ")
                     self.flags.inVarBlock = True
                     self.flags.doneVarBlock = True
                 elif not self.flags.doneProgBlock:
-                    sys.stdout.write(" in prog ")
+                    #sys.stdout.write(" in prog ")
                     self.flags.inProgBlock = True
                     self.flags.doneProgBlock = True
         else:
@@ -251,54 +189,107 @@ class TypeChecker:
             self.braceStack.pop()
             if len(self.braceStack) == 0:
                 if self.flags.inVarBlock:
-                    sys.stdout.write(" leave var ")
+                    #sys.stdout.write(" leave var ")
                     self.flags.inVarBlock = False
                 elif self.flags.inProgBlock:
                     self.flags.inProgBlock = False
-                    sys.stdout.write(" leave prog ")
+                    #sys.stdout.write(" leave prog ")
 
-
-    def _VarBlock(self):
-        i=1
-
-    def _ProgBlock(self):
-        i=1
-
-    def _inTheVoid(self):
-        i=1
-
-    def getNext(self):
-        tok="END"
+    def _getNextToken(self):
         try:
             tok = self.prog[self.i][self.j + 1]
         except IndexError:
             try:
                 tok = self.prog[self.i + 1][0]
             except IndexError:
+                tok = ""
+        return tok
+
+    def _getNextTokenCode(self):
+        tok = self._getNextToken()
+        retval = ""
+        if tok in reserved:
+            retval = reserved[tok]
+        elif tok in self.symbols:
+            retval = types[self.symbols[tok]]
+        return retval
+
+    def _increment(self):
+        size = len(self.prog[self.i])
+        if self.j < (size-1):
+            self.j += 1
+        else:
+            self.i += 1
+            self.j = 0
+        try:
+            self.token = self.prog[self.i][self.j]
+        except IndexError:
+            self.token = "END"
+
+    def _var_dec(self):
+        next = self._getNextToken()
+        if next not in self.symbols:
+            if self.token == "int":
+                _type = 0
+            elif self.token == "float":
+                _type = 1
+            else:
+                _type = 2
+            self.symbols[next] = _type
+            self._increment()
+            if self._getNextTokenCode() == "semicolon":
+                return
+
+
+        # else, redef
+
+    def _assign(self):
+        if self.token in self.symbols
+
+    def _stmt(self):
+        code = reserved[self.token]
+        if code in ["open_paren","close_paren"]:
+            self._checkBrace()
+        elif code == "type":
+            self._var_dec()
+        elif code == "write_stat":
+            self._write_stat()
+        else:
+            self._assign()
+
+    def begin(self):
+        self.token = self.prog[self.i][self.j]
+        while True:
+            if self.token == "END":
+                return
+            if self.i >= len(self.prog):
+                return
+
+            if isComment(self.token):
+                self.i += 1
+                self.j = 0
+
+            if self.token in reserved:
+                self._stmt()
+            self._increment()
 
 
     def start(self):
-        self.i = -1
-        for line in self.prog:
-            i += 1
-            errors = ""
-            sys.stdout.write(repr(i).zfill(3)+" : ")
-            self.j = 0
-            for token in line:
+        for self.i in len(self.prog):
+            line = self.prog[self.i]
+            self.errors = ""
+            for self.j in len(line):
+                token = line[self.j]
                 self.curr = token
                 self._checkBrace(token)
                 if isComment(token):
                     break
-                if self.flags.inVarBlock:
-                    self._VarBlock()
-                elif self.flags.inProgBlock:
-                    self._VarBlock()
-                else:
-                    self._inTheVoid()
+                #if token in reserved:
+
                 self.j += 1
-            if len(errors) != 0:
+            if len(self.errors) != 0:
                 self.flags.errors += 1
-            print()
+                print(repr(self.i).zfill(3)+" : "+self.errors)
 
 
     def end(self):
@@ -308,7 +299,8 @@ class TypeChecker:
             print("Your program contains "+repr(self.errors)+" errors")
 
 
-file_contents = open("test.cmm", "r").read().strip().lower()
+file_contents = open("test1.cmm", "r").read().strip().lower()
 checker = TypeChecker(generateTokens(file_contents))
-checker.start()
+#checker.start()
+checker.begin()
 checker.end()
