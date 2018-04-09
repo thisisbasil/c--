@@ -3,6 +3,27 @@
 '''
 Basil Huffman
  bahuffma@gwmail.gwu.edu
+
+ Changes to grammar:
+
+ In the given grammar, the following is given:
+
+ read_expr --> "(" expr ")" ";"
+
+ This makes no sense, as the following statement is allowed:
+
+ read_expr(1.2+4);
+
+ Hence, I am changing the grammar to:
+
+ read_expr --> "(" var ")"
+
+ Since this is a simple language, it will only allow one statement
+ (or, in the case of loops and conditionals, one sub-statement) per
+ line. So, in practice, this language is a hybrid of Pascal (var
+ declaration block occurring before the pprogrammatic block), C
+ (syntax and typing), and Python.
+
 '''
 
 import re
@@ -154,6 +175,14 @@ class Flags:
         self.inProgBlock = False
         self.doneVarBlock = False
         self.doneProgBlock = False
+        self.int = False
+        self.bool = False
+        self.float = False
+
+    def resetType(self):
+        self.int = False
+        self.float = False
+        self.bool = False
 
 class TypeChecker:
 
@@ -212,6 +241,7 @@ class TypeChecker:
             retval = reserved[tok]
         elif tok in self.symbols:
             retval = types[self.symbols[tok]]
+
         return retval
 
     def _increment(self):
@@ -240,26 +270,134 @@ class TypeChecker:
             if self._getNextTokenCode() == "semicolon":
                 return
 
-
         # else, redef
 
+    def _simple_expr(self):
+        next = self._getNextTokenCode()
+        if next == "open_paren":
+            self._increment()
+            self._expr()
+            next = self._getNextTokenCode()
+            if next == "close_paren":
+                self._increment()
+            else:
+                print("_simple_expr: paren error")
+        elif is_float(next) or next.isdigit():
+            if is_float(next):
+                self.flags.float = True
+            else:
+                self.flags.int = True
+        else:
+            if next in self.symbols():
+                if self.symbols[next] == 0:
+                    self.flags.int = True
+                elif self.symbols[next] == 1:
+                    self.flags.float = True
+                else:
+                    self.flags.bool = True
+            elif next in reserved:
+                self.flags.errors +=1
+                self.errors += "cannot use a reserved word. "
+            else:
+                self.flags.errors += 1
+                self.errors += "undefined variable. "
+
+    def _mul_expr(self):
+        self._simple_expr()
+
+
+    def _add_expr(self):
+        self._mul_expr()
+
+
+    def _expr(self):
+        self._add_expr()
+        self.flags.resetType()
+
     def _assign(self):
-        if self.token in self.symbols
+        #if self.token in self.symbols
+        next = self._getNextTokenCode()
+
+    def _write_stat(self):
+        next = self._getNextToken()
+        temp = ''
+        if next != "open_paren":
+            print("error")
+        else:
+            self._increment()
+            next = self._getNextTokenCode()
+
+    def _read_stat(self):
+        next = self._getNextTokenCode()
+        temp = ""
+        if next != "open_paren":
+            print("error")
+        else:
+            self._increment()
+            next = self._getNextToken()
+        if self._getNextToken() not in self.symbols:
+            while next not in [";",")"] \
+                    and self.j < len(self.prog[self.i]):
+                if next in reserved:
+                    if temp != "undefined variable ":
+                        temp += "cannot use a reserved word "
+                        self.flags.errors += 1
+                else:
+                    if temp != "cannot use a reserved word ":
+                        temp += "undefined variable "
+                        self.flags.errors += 1
+                self._increment()
+                next = self._getNextToken()
+
+            print(repr(self.i).zfill(3)+": "+temp)
+        else:
+            self._increment()
+            next = self._getNextTokenCode()
+        if next not in ["close_paren",')']:
+            print("error")
+            '''while next != "semicolon" and self.j < len(self.prog[self.i]):
+                self._increment()
+                next = self._getNextToken()
+        else:
+            self._increment()
+            next = self._getNextTokenCode()
+        if next != "semicolon":
+            print("error")
+            while self.j < len(self.prog[self.i]):
+                self._increment()'''
+
+
 
     def _stmt(self):
         code = reserved[self.token]
         if code in ["open_paren","close_paren"]:
             self._checkBrace()
+
         elif code == "type":
             self._var_dec()
-        elif code == "write_stat":
-            self._write_stat()
+        elif code == "read_stat":
+            self._read_stat()
         else:
             self._assign()
+        next = self._getNextTokenCode()
+        while next != "semicolon" and self.j < len(self.prog[self.i]):
+            self._increment()
+            next = self._getNextTokenCode()
+
+    def _program(self):
+        next = self._getNextTokenCode()
+        if next == "open_paren":
+            self._checkBrace()
+            self._increment()
+        self._stmt()
+        self._increment()
+        next = self._getNextTokenCode()
+        if next == "close_paren":
+            self._checkBrace()
 
     def begin(self):
         self.token = self.prog[self.i][self.j]
-        while True:
+        '''while True:
             if self.token == "END":
                 return
             if self.i >= len(self.prog):
@@ -271,7 +409,7 @@ class TypeChecker:
 
             if self.token in reserved:
                 self._stmt()
-            self._increment()
+            self._increment()'''
 
 
     def start(self):
@@ -296,7 +434,7 @@ class TypeChecker:
         if self.flags.errors == 0:
             print("Your program is type error free")
         else:
-            print("Your program contains "+repr(self.errors)+" errors")
+            print("Your program contains "+repr(self.flags.errors)+" type error(s)")
 
 
 file_contents = open("test1.cmm", "r").read().strip().lower()
