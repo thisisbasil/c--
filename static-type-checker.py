@@ -40,7 +40,7 @@ reserved = {'int':'type','boolean':'type','float':'type',
 		'or':'or_stmt','>':'rel_stmt','<':'rel_stmt','>=':'rel_stmt',
 		'==':'rel_stmt','(':'open_paren',')':'close_paren',
 		'{':'open_brace', '}':'close_brace', '//':'comment',';':'semicolon'}
-types={0:"VAR_CODE_INT", 1:"VAR_CODE_FLOAT", 2:"VAR_CODE_BOOLEAN"}
+types={0:"var_code_int", 1:"var_code_float", 2:"var_code_boolean"}
 codes={"undefined":"unrecognized symbol. ",
 	   "wrong_block":"statement not permitted in block. ",
 	   "begin_var":"beginning of var declaration block. ",
@@ -161,6 +161,12 @@ def isType(token):
 		return True
 	return False
 
+def returnType(type):
+    if type == "int":
+        return 0
+    elif type == "float":
+        return 1
+    return 2
 
 def isComment(token):
     if token == "//":
@@ -184,11 +190,20 @@ class Flags:
         self.float = False
         self.bool = False
 
+    def checkTypes(self):
+        if self.int and not self.float and not self.bool:
+            return True
+        if self.float and not self.int and not self.bool:
+            return True
+        if self.bool and not self.int and not self.float:
+            return True
+        return False
+
 class TypeChecker:
 
     def __init__(self, tokens):
         self.prog = tokens
-        self.curr = ""
+        self.token = ""
         self.next = ""
         self.errors=""
         self.flags = Flags()
@@ -256,188 +271,113 @@ class TypeChecker:
         except IndexError:
             self.token = "END"
 
-    def _var_dec(self):
-        next = self._getNextToken()
-        if next not in self.symbols:
-            if self.token == "int":
-                _type = 0
-            elif self.token == "float":
-                _type = 1
-            else:
-                _type = 2
-            self.symbols[next] = _type
-            self._increment()
-            if self._getNextTokenCode() == "semicolon":
-                return
+    def _if_stmt(self):
+        sys.stdout.write("if_stmt")
 
-        # else, redef
-
-    def _simple_expr(self):
-        next = self._getNextTokenCode()
-        if next == "open_paren":
-            self._increment()
-            self._expr()
-            next = self._getNextTokenCode()
-            if next == "close_paren":
-                self._increment()
-            else:
-                print("_simple_expr: paren error")
-        elif is_float(next) or next.isdigit():
-            if is_float(next):
-                self.flags.float = True
-            else:
-                self.flags.int = True
-        else:
-            if next in self.symbols():
-                if self.symbols[next] == 0:
-                    self.flags.int = True
-                elif self.symbols[next] == 1:
-                    self.flags.float = True
-                else:
-                    self.flags.bool = True
-            elif next in reserved:
-                self.flags.errors +=1
-                self.errors += "cannot use a reserved word. "
-            else:
-                self.flags.errors += 1
-                self.errors += "undefined variable. "
-
-    def _mul_expr(self):
-        self._simple_expr()
-
-
-    def _add_expr(self):
-        self._mul_expr()
-
-
-    def _expr(self):
-        self._add_expr()
-        self.flags.resetType()
-
-    def _assign(self):
-        #if self.token in self.symbols
-        next = self._getNextTokenCode()
+    def _while_stmt(self):
+        sys.stdout.write("while_stmt")
 
     def _write_stat(self):
-        next = self._getNextToken()
-        temp = ''
-        if next != "open_paren":
-            print("error")
-        else:
-            self._increment()
-            next = self._getNextTokenCode()
+        sys.stdout.write("write_stat")
 
+    # read --> "(" var ")"
+    # var --> [A-Za-z]+
     def _read_stat(self):
+        sys.stdout.write("read_stat")
         next = self._getNextTokenCode()
-        temp = ""
         if next != "open_paren":
-            print("error")
+            self.errors += " non-type error: missing '('."
         else:
             self._increment()
-            next = self._getNextToken()
-        if self._getNextToken() not in self.symbols:
-            while next not in [";",")"] \
-                    and self.j < len(self.prog[self.i]):
-                if next in reserved:
-                    if temp != "undefined variable ":
-                        temp += "cannot use a reserved word "
-                        self.flags.errors += 1
-                else:
-                    if temp != "cannot use a reserved word ":
-                        temp += "undefined variable "
-                        self.flags.errors += 1
-                self._increment()
-                next = self._getNextToken()
-
-            print(repr(self.i).zfill(3)+": "+temp)
-        else:
+        next = self._getNextToken()
+        if next not in self.symbols:
+            self.errors += " error: contains variable not in symbol table."
+            self.flags.errors += 1
+        temp = self.prog[self.i]
+        l = len(temp)
+        while self.token != ')' and self.j < (l-2):
             self._increment()
-            next = self._getNextTokenCode()
-        if next not in ["close_paren",')']:
-            print("error")
-            '''while next != "semicolon" and self.j < len(self.prog[self.i]):
-                self._increment()
-                next = self._getNextToken()
+        if self.token != ';':
+            self.errors += " non-type error: missing ')'"
+
+    # var_dec --> type var
+    def _var_dec(self):
+        sys.stdout.write("var_dec")
+        type = returnType(self.token)
+        next = self._getNextToken()
+        if next not in self.symbols and next not in reserved and checkSymbolName(next):
+            self.symbols[next] = types[type]
         else:
-            self._increment()
-            next = self._getNextTokenCode()
-        if next != "semicolon":
-            print("error")
-            while self.j < len(self.prog[self.i]):
-                self._increment()'''
+            if next in self.symbols:
+                self.errors += " type error: variable redifinition."
+                self.flags.errors += 1
+            else:
+                self.errors += " non-type error: disallowed variable name."
 
-
-
-    def _stmt(self):
-        code = reserved[self.token]
-        if code in ["open_paren","close_paren"]:
-            self._checkBrace()
-
-        elif code == "type":
-            self._var_dec()
-        elif code == "read_stat":
-            self._read_stat()
-        else:
-            self._assign()
-        next = self._getNextTokenCode()
-        while next != "semicolon" and self.j < len(self.prog[self.i]):
-            self._increment()
-            next = self._getNextTokenCode()
+    def _assign(self):
+        sys.stdout.write("assign")
+        if not self.flags.checkTypes():
+            self.errors += " type error: incompatible types"
+            self.flags.errors += 1
+        self.flags.resetType()
 
     def _program(self):
-        next = self._getNextTokenCode()
-        if next == "open_paren":
+        if self.token == "{":
             self._checkBrace()
+            print(repr(self.i+1).zfill(3)+" open_paren")
             self._increment()
-        self._stmt()
-        self._increment()
-        next = self._getNextTokenCode()
-        if next == "close_paren":
-            self._checkBrace()
+        while(True):
+            sys.stdout.write(repr(self.i+1).zfill(3)+" ")
+            if self.token == "}":
+                self._checkBrace()
+                print("close_paren")
+                break
+            elif self.token == "if":
+                self._if_stmt()
+            elif self.token == "while":
+                self._while_stmt()
+            elif self.token == "sys.stdout.write":
+                self._write_stat()
+            elif self.token == "read":
+                self._read_stat()
+            elif isType(self.token):
+                self._var_dec()
+            elif self.token not in [' ',"end_while","end_if"]:
+                self._assign()
+            else:
+                sys.stdout.write("Unknown statement: "+repr(self.prog[self.i]))
+            self._skipToEndOfLine()
+            print(self.errors)
+            self.errors = ""
+            self._increment()
+
+    def _skipToEndOfLine(self):
+        l = len(self.prog[self.i]) - 1
+        while self.j < l:
+            self._increment()
 
     def begin(self):
+        temp = self.prog[self.i]
+        while(len(temp) == 0):
+            self.i += 1
+            temp = self.prog[self.i]
         self.token = self.prog[self.i][self.j]
-        '''while True:
-            if self.token == "END":
-                return
-            if self.i >= len(self.prog):
-                return
-
-            if isComment(self.token):
-                self.i += 1
-                self.j = 0
-
-            if self.token in reserved:
-                self._stmt()
-            self._increment()'''
-
-
-    def start(self):
-        for self.i in len(self.prog):
-            line = self.prog[self.i]
-            self.errors = ""
-            for self.j in len(line):
-                token = line[self.j]
-                self.curr = token
-                self._checkBrace(token)
-                if isComment(token):
-                    break
-                #if token in reserved:
-
-                self.j += 1
-            if len(self.errors) != 0:
-                self.flags.errors += 1
-                print(repr(self.i).zfill(3)+" : "+self.errors)
+        while(self.token != '{'):
+            self._increment()
+        self._program()
+        while (self.token != '{'):
+            self._increment()
+        self._program()
 
 
     def end(self):
         if self.flags.errors == 0:
-            print("Your program is type error free")
+            sys.stdout.write("Your program is type error free")
         else:
-            print("Your program contains "+repr(self.flags.errors)+" type error(s)")
+            sys.stdout.write("Your program contains "+repr(self.flags.errors)+" type error(s)")
 
 
-file_contents = open("test1.cmm", "r").read().strip().lower()
+file_contents = open("test1.cmm", "r").read().lower()
 checker = TypeChecker(generateTokens(file_contents))
 #checker.start()
 checker.begin()
