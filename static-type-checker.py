@@ -184,6 +184,7 @@ class Flags:
         self.int = False
         self.bool = False
         self.float = False
+        self.isBoolStmt = False
 
     def resetType(self):
         self.int = False
@@ -196,6 +197,8 @@ class Flags:
         if self.float and not self.int and not self.bool:
             return True
         if self.bool and not self.int and not self.float:
+            return True
+        if not self.bool and not self.int and not self.float:
             return True
         return False
 
@@ -210,6 +213,7 @@ class TypeChecker:
         self.braceStack=[]
         self.symbols={}
         self.i = self.j = 0
+        self.width = len(str(len(self.prog)))
 
     # checks braces to determine which block you're in
     def _checkBrace(self):
@@ -251,11 +255,15 @@ class TypeChecker:
 
     def _getNextTokenCode(self):
         tok = self._getNextToken()
-        retval = ""
+        retval = "UNDEF"
         if tok in reserved:
             retval = reserved[tok]
         elif tok in self.symbols:
-            retval = types[self.symbols[tok]]
+            temp = self.symbols[tok]
+            try:
+                retval = types[temp]
+            except KeyError:
+                retval = self._getNextToken()
 
         return retval
 
@@ -269,40 +277,63 @@ class TypeChecker:
         try:
             self.token = self.prog[self.i][self.j]
         except IndexError:
-            self.token = "END"
+            if self.i < len(self.prog):
+                self.token = "COM"
+            else:
+                self.token = "END"
 
     def _if_stmt(self):
-        sys.stdout.write("if_stmt")
+        if not self.flags.inProgBlock:
+            self.errors += "non-type error: statement only allowed in program block"
 
     def _while_stmt(self):
-        sys.stdout.write("while_stmt")
+        if not self.flags.inProgBlock:
+            self.errors += "non-type error: statement only allowed in program block"
 
     def _write_stat(self):
-        sys.stdout.write("write_stat")
+        if not self.flags.inProgBlock:
+            self.errors += "non-type error: statement only allowed in program block"
+
 
     # read --> "(" var ")"
     # var --> [A-Za-z]+
     def _read_stat(self):
-        sys.stdout.write("read_stat")
+        #sys.stdout.write("read_stat")
         next = self._getNextTokenCode()
         if next != "open_paren":
             self.errors += " non-type error: missing '('."
         else:
             self._increment()
         next = self._getNextToken()
-        if next not in self.symbols:
-            self.errors += " error: contains variable not in symbol table."
+        if next not in self.symbols and next != ';':
+            self.errors += " type error: contains variable not in symbol table."
             self.flags.errors += 1
         temp = self.prog[self.i]
         l = len(temp)
+        prev = self.token
         while self.token != ')' and self.j < (l-2):
+            if next == ')' and prev == '(':
+                self.errors += ' non-type error: missing variable. '
+                self._increment()
+                break
             self._increment()
-        if self.token != ';':
+            if self.token in ['=','-','+','*','/','%'] and "assignment" not in self.errors:
+                self.errors += " non-type error: assignment/arithmetic not allowed. "
+            elif self.token in ['>','<','>=','=='] and "relational" not in self.errors:
+                self.errors += " non-type error: relational statements not allowed."
+            elif "symbol" not in self.errors and \
+                    self.token not in self.symbols and self.token != ')':
+                self.errors += " type error: contains variable not in symbol table. "
+                self.flags.errors += 1
+
+        if self.token != ';' and self.token != ')':
             self.errors += " non-type error: missing ')'"
+        if not self.flags.inProgBlock:
+            self.errors += " non-type error: statement only allowed in program block"
 
     # var_dec --> type var
     def _var_dec(self):
-        sys.stdout.write("var_dec")
+        #sys.stdout.write("var_dec")
         type = returnType(self.token)
         next = self._getNextToken()
         if next not in self.symbols and next not in reserved and checkSymbolName(next):
@@ -313,48 +344,128 @@ class TypeChecker:
                 self.flags.errors += 1
             else:
                 self.errors += " non-type error: disallowed variable name."
+        l = len(self.prog[self.i])
+        while (self.j < (l-2)):
+            self._increment()
+            next = self._getNextTokenCode()
+            if (next == "assign_op"):
+                self.errors += " non-type error: assignment not allowed in declarations."
+        if not self.flags.inVarBlock:
+            self.errors += " non-type error: variable declarations only allowed" + \
+                           " in var declarations block"
 
+    def _checkType(self):
+        try:
+            type = self.symbols[self.token]
+            if type == "var_code_int":
+                self.flags.int = True
+            elif type == "var_code_float":
+                self.flags.float = True
+            elif type == "var_code_boolean":
+                self.flags.bool = True
+        except KeyError:
+            return
+
+    # assign -> var "=" expr
     def _assign(self):
-        sys.stdout.write("assign")
+        self.flags.resetType()
+        #sys.stdout.write("assign")
+        type = ""
+        l = len(self.prog[self.i])
+        if self.token not in self.symbols:
+            self.errors += " error: contains variable not in symbol table "
+
+        self._checkType()
+
+        next = self._getNextTokenCode()
+        if next != "assign_op":
+            self.errors += " non-type error: assignment statement missing '='"
+            if not self.flags.inProgBlock:
+                self.errors += "non-type error: statement only allowed in program block"
+            return
+        if self.j >= (l-2):
+            self.errors += " non-type error: missing rvalue"
+        else:
+            self._increment()
+            self._expr()
+
+        self._skipToEndOfLine()
+
         if not self.flags.checkTypes():
             self.errors += " type error: incompatible types"
             self.flags.errors += 1
         self.flags.resetType()
+        if not self.flags.inProgBlock:
+            self.errors += "non-type error: statement only allowed in program block"
 
     def _program(self):
         if self.token == "{":
             self._checkBrace()
-            print(repr(self.i+1).zfill(3)+" open_paren")
+            #print(repr(self.i+1).zfill(self.width)+" open_paren")
             self._increment()
         while(True):
-            sys.stdout.write(repr(self.i+1).zfill(3)+" ")
+            #sys.stdout.write(repr(self.i+1).zfill(self.width)+" ")
             if self.token == "}":
                 self._checkBrace()
-                print("close_paren")
+                #print("close_paren")
                 break
             elif self.token == "if":
+                self.flags.isBoolStmt = True
                 self._if_stmt()
             elif self.token == "while":
+                self.flags.isBoolStmt = True
                 self._while_stmt()
-            elif self.token == "sys.stdout.write":
+            elif self.token == "print":
                 self._write_stat()
             elif self.token == "read":
                 self._read_stat()
             elif isType(self.token):
                 self._var_dec()
-            elif self.token not in [' ',"end_while","end_if"]:
+            elif self.token not in [' ',"end_while","end_if"] and self.token != "COM":
                 self._assign()
-            else:
-                sys.stdout.write("Unknown statement: "+repr(self.prog[self.i]))
+            elif self.token != "COM":
+                print("Unknown statement: "+repr(self.prog[self.i]))
             self._skipToEndOfLine()
-            print(self.errors)
+            if len(self.errors) >  0:
+                print(repr(self.i+1).zfill(self.width)+self.errors)
             self.errors = ""
             self._increment()
 
     def _skipToEndOfLine(self):
         l = len(self.prog[self.i]) - 1
         while self.j < l:
+            if isType(self.token):
+                self._checkType()
+            elif is_float(self.token):
+                self.flags.float = True
+            elif self.token.isdigit():
+                self.flags.int = True
             self._increment()
+        if self.token not in [';','COM']:
+            self.errors += " non-type error: missing EOL token."
+
+    # id | var | "( expr ")"
+    def _simple_expr(self):
+        next = self._getNextTokenCode()
+
+
+    # mul_expr --> simple_expr {("\"|"%"|"*") simple_expr}
+    def _mul_expr(self):
+        self._simple_expr()
+
+    # add_expr --> mul_expr {("+"|"-" mul_expr}
+    def _add_expr(self):
+        self._mul_expr()
+        next = self._getNextTokenCode()
+        if next == "UNDEF" and "symbol table" not in self.errors:
+            self.errors += " type error: contains variable not in symbol table."
+        if next == "add_op":
+            self._increment()
+            self._mul_expr()
+
+    # expr --> add_expr
+    def _expr(self):
+        self._add_expr()
 
     def begin(self):
         temp = self.prog[self.i]
@@ -373,12 +484,24 @@ class TypeChecker:
     def end(self):
         if self.flags.errors == 0:
             sys.stdout.write("Your program is type error free")
-        else:
-            sys.stdout.write("Your program contains "+repr(self.flags.errors)+" type error(s)")
+#        else:
+#            sys.stdout.write("Your program contains "+repr(self.flags.errors)+" type error(s)")
 
+def stripComments(contents):
+    retval = []
+    l1 = len(contents)
+    for i in range(0,l1):
+        line = []
+        l2 = len(contents[i])
+        for j in range(0,l2):
+            if contents[i][j] != '//':
+                line.append(contents[i][j])
+            else:
+                break
+        retval.append(line)
+    return retval
 
 file_contents = open("test1.cmm", "r").read().lower()
-checker = TypeChecker(generateTokens(file_contents))
-#checker.start()
+checker = TypeChecker(stripComments(generateTokens(file_contents)))
 checker.begin()
 checker.end()

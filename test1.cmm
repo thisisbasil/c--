@@ -1,13 +1,21 @@
 
+
+
+
 {
 	int a;
-	float b
-	boolean c=0;
+	float a2;
+	boolean c//; 
 }
 {
-	a=b+c;
-	print(q);
+	//c
+	a=b+2;
+	//print(q);
 	float w;
-	read ()a
-	end while
+	//read (a==b);
+	//read(a2);
+	//read();
+	read ;
+	print(w);
+	//end while
 }
