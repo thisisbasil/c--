@@ -6,23 +6,33 @@ Basil Huffman
 
  Changes to grammar:
 
- In the given grammar, the following is given:
+ 1. In the given grammar, the following is given:
 
- read_expr --> "(" expr ")" ";"
+    read_expr --> "(" expr ")" ";"
 
- This makes no sense, as the following statement is allowed:
+    This makes no sense, as the following statement is allowed:
 
- read_expr(1.2+4);
+    read_expr(1.2+4);
 
- Hence, I am changing the grammar to:
+    Hence, I am changing the grammar to:
 
- read_expr --> "(" var ")"
+    read_expr --> "(" var ")"
 
- Since this is a simple language, it will only allow one statement
- (or, in the case of loops and conditionals, one sub-statement) per
- line. So, in practice, this language is a hybrid of Pascal (var
- declaration block occurring before the pprogrammatic block), C
- (syntax and typing), and Python.
+    Since this is a simple language, it will only allow one statement
+    (or, in the case of loops and conditionals, one sub-statement) per
+    line. So, in practice, this language is a hybrid of Pascal (var
+    declaration block occurring before the pprogrammatic block), C
+    (syntax and typing), and Python.
+
+ 2. strings (e.g. "a", 'a', "1.1", '1.1') within assignment statements (i.e. a = "1.1")
+    are treated as both a type and a symbol
+
+ 3. only assignments are allowed for booleans
+
+ Caveats:
+
+ 1. If there are any syntax/semantic errors e.g. no semicolon, improper variable name, the variable
+    is *NOT* added to the symbol table
 
 '''
 
@@ -126,15 +136,31 @@ def isType(token):
 		return True
 	return False
 
+def is_int(n):
+    #return isinstance(n,int)
+    return n.isdigit()
+
 def is_float(n):
-    is_number = True
+    '''is_number = True
     try:
         num = float(n)
         # check for "nan" floats
-        is_number = num == num   # or use `math.isnan(num)`
+        is_number = (num == num)   # or use `math.isnan(num)`
     except ValueError:
         is_number = False
-    return is_number
+    return is_number'''
+
+    return isinstance(n,float)
+
+def check(n):
+        if n.isdigit():
+            return 'int'
+        else:
+            try:
+                float(n)
+                return 'float'
+            except ValueError:
+                return 'string'
 
 def checkNesting(stack,curr):
 	if isOpen(curr):
@@ -185,13 +211,17 @@ class Flags:
         self.bool = False
         self.float = False
         self.isBoolStmt = False
+        self.string = False
 
     def resetType(self):
         self.int = False
         self.float = False
         self.bool = False
+        self.string = False
 
     def checkTypes(self):
+        if self.string:
+            return False
         if self.int and not self.float and not self.bool:
             return True
         if self.float and not self.int and not self.bool:
@@ -256,6 +286,7 @@ class TypeChecker:
     def _getNextTokenCode(self):
         tok = self._getNextToken()
         retval = "UNDEF"
+        toktype = check(tok)
         if tok in reserved:
             retval = reserved[tok]
         elif tok in self.symbols:
@@ -264,6 +295,12 @@ class TypeChecker:
                 retval = types[temp]
             except KeyError:
                 retval = self._getNextToken()
+        elif toktype == "int":
+            retval = "int"
+        elif toktype == "float":
+            retval = "float"
+        elif '"' in tok or "'" in tok:
+            retval = "string"
 
         return retval
 
@@ -357,9 +394,13 @@ class TypeChecker:
     def _checkType(self):
         try:
             type = self.symbols[self.token]
-            if type == "var_code_int":
+            toktype = check(self.token)
+            if toktype == "string" and self.token not in ["'",'"'] \
+                    and self.token not in self.symbols:
+                self.flags.string = True
+            elif type == "var_code_int" or toktype == "int":
                 self.flags.int = True
-            elif type == "var_code_float":
+            elif type == "var_code_float" or toktype == "float":
                 self.flags.float = True
             elif type == "var_code_boolean":
                 self.flags.bool = True
@@ -372,6 +413,7 @@ class TypeChecker:
         #sys.stdout.write("assign")
         type = ""
         l = len(self.prog[self.i])
+
         if self.token not in self.symbols:
             self.errors += " error: contains variable not in symbol table "
 
@@ -433,12 +475,13 @@ class TypeChecker:
 
     def _skipToEndOfLine(self):
         l = len(self.prog[self.i]) - 1
+        toktype = check(self.token)
         while self.j < l:
             if isType(self.token):
                 self._checkType()
-            elif is_float(self.token):
+            elif toktype == "float":
                 self.flags.float = True
-            elif self.token.isdigit():
+            elif toktype == "int":#self.token.isdigit():
                 self.flags.int = True
             self._increment()
         if self.token not in [';','COM']:
@@ -447,18 +490,41 @@ class TypeChecker:
     # id | var | "( expr ")"
     def _simple_expr(self):
         next = self._getNextTokenCode()
+        if next in ["int","float","string"]:
+            if next == "int":
+                self.flags.int = True
+            elif next == "string":
+                self.flags.string = True
+            else:
+                self.flags.float = True
+        elif next == "open_paren":
+            self._increment()
+            self._expr()
+        elif self._getNextToken() in self.symbols:
+            self._checkType()
+
+
 
 
     # mul_expr --> simple_expr {("\"|"%"|"*") simple_expr}
     def _mul_expr(self):
         self._simple_expr()
+        next = self._getNextTokenCode()
+        if next == "UNDEF" and "symbol table" not in self.errors:
+            self.errors += " type error: contains variable not in symbol table."
+            self.flags.errors += 1
+        if next == "multiply_op":
+            self._increment()
+            self._mul_expr()
 
     # add_expr --> mul_expr {("+"|"-" mul_expr}
     def _add_expr(self):
         self._mul_expr()
+        self._increment()
         next = self._getNextTokenCode()
         if next == "UNDEF" and "symbol table" not in self.errors:
             self.errors += " type error: contains variable not in symbol table."
+            self.flags.errors += 1
         if next == "add_op":
             self._increment()
             self._mul_expr()
