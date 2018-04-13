@@ -152,7 +152,7 @@ def is_float(n):
 
     return isinstance(n,float)
 
-def check(n):
+def check(n,tbl):
         if n.isdigit():
             return 'int'
         else:
@@ -160,7 +160,9 @@ def check(n):
                 float(n)
                 return 'float'
             except ValueError:
-                return 'string'
+                if n not in tbl:
+                    return 'string'
+                return tbl[n]
 
 def checkNesting(stack,curr):
 	if isOpen(curr):
@@ -212,6 +214,7 @@ class Flags:
         self.float = False
         self.isBoolStmt = False
         self.string = False
+        self.undef = True
 
     def resetType(self):
         self.int = False
@@ -237,10 +240,10 @@ class TypeChecker:
     def __init__(self, tokens):
         self.prog = tokens
         self.token = ""
-        self.next = ""
         self.errors=""
         self.flags = Flags()
         self.braceStack=[]
+        self.parenStack=[]
         self.symbols={}
         self.i = self.j = 0
         self.width = len(str(len(self.prog)))
@@ -286,7 +289,7 @@ class TypeChecker:
     def _getNextTokenCode(self):
         tok = self._getNextToken()
         retval = "UNDEF"
-        toktype = check(tok)
+        toktype = check(tok,self.symbols)
         if tok in reserved:
             retval = reserved[tok]
         elif tok in self.symbols:
@@ -321,15 +324,15 @@ class TypeChecker:
 
     def _if_stmt(self):
         if not self.flags.inProgBlock:
-            self.errors += "non-type error: statement only allowed in program block"
+            no=1#self.errors += "non-type error: statement only allowed in program block"
 
     def _while_stmt(self):
         if not self.flags.inProgBlock:
-            self.errors += "non-type error: statement only allowed in program block"
+            no=1#self.errors += "non-type error: statement only allowed in program block"
 
     def _write_stat(self):
         if not self.flags.inProgBlock:
-            self.errors += "non-type error: statement only allowed in program block"
+            no=1#self.errors += "non-type error: statement only allowed in program block"
 
 
     # read --> "(" var ")"
@@ -338,7 +341,7 @@ class TypeChecker:
         #sys.stdout.write("read_stat")
         next = self._getNextTokenCode()
         if next != "open_paren":
-            self.errors += " non-type error: missing '('."
+            no=1#self.errors += " non-type error: missing '('."
         else:
             self._increment()
         next = self._getNextToken()
@@ -350,23 +353,23 @@ class TypeChecker:
         prev = self.token
         while self.token != ')' and self.j < (l-2):
             if next == ')' and prev == '(':
-                self.errors += ' non-type error: missing variable. '
+                no=1#self.errors += ' non-type error: missing variable. '
                 self._increment()
                 break
             self._increment()
             if self.token in ['=','-','+','*','/','%'] and "assignment" not in self.errors:
-                self.errors += " non-type error: assignment/arithmetic not allowed. "
+                no=1#self.errors += " non-type error: assignment/arithmetic not allowed. "
             elif self.token in ['>','<','>=','=='] and "relational" not in self.errors:
-                self.errors += " non-type error: relational statements not allowed."
+                no=1#self.errors += " non-type error: relational statements not allowed."
             elif "symbol" not in self.errors and \
                     self.token not in self.symbols and self.token != ')':
                 self.errors += " type error: contains variable not in symbol table. "
                 self.flags.errors += 1
 
         if self.token != ';' and self.token != ')':
-            self.errors += " non-type error: missing ')'"
+            no=1#self.errors += " non-type error: missing ')'"
         if not self.flags.inProgBlock:
-            self.errors += " non-type error: statement only allowed in program block"
+            no=1#self.errors += " non-type error: statement only allowed in program block"
 
     # var_dec --> type var
     def _var_dec(self):
@@ -380,7 +383,7 @@ class TypeChecker:
                 self.errors += " type error: variable redifinition."
                 self.flags.errors += 1
             else:
-                self.errors += " non-type error: disallowed variable name."
+                no=1#self.errors += " non-type error: disallowed variable name."
         l = len(self.prog[self.i])
         while (self.j < (l-2)):
             self._increment()
@@ -388,13 +391,13 @@ class TypeChecker:
             if (next == "assign_op"):
                 self.errors += " non-type error: assignment not allowed in declarations."
         if not self.flags.inVarBlock:
-            self.errors += " non-type error: variable declarations only allowed" + \
-                           " in var declarations block"
+            no=1#self.errors += " non-type error: variable declarations only allowed" + \
+            #               " in var declarations block"
 
     def _checkType(self):
         try:
             type = self.symbols[self.token]
-            toktype = check(self.token)
+            toktype = check(self.token,self.symbols)
             if toktype == "string" and self.token not in ["'",'"'] \
                     and self.token not in self.symbols:
                 self.flags.string = True
@@ -405,8 +408,21 @@ class TypeChecker:
             elif type == "var_code_boolean":
                 self.flags.bool = True
         except KeyError:
-            return
-
+            try:
+                type = self.symbols[self._getNextToken()]
+                toktype = check(self._getNextToken(),self.symbols)
+                if toktype == "string" and self._getNextToken() not in ["'",'"'] \
+                        and self.token not in self.symbols:
+                    self.flags.string = True
+                elif type == "var_code_int" or toktype == "int":
+                    self.flags.int = True
+                elif type == "var_code_float" or toktype == "float":
+                    self.flags.float = True
+                elif type == "var_code_boolean":
+                    self.flags.bool = True
+                return
+            except KeyError:
+                return
     # assign -> var "=" expr
     def _assign(self):
         self.flags.resetType()
@@ -420,13 +436,15 @@ class TypeChecker:
         self._checkType()
 
         next = self._getNextTokenCode()
+
         if next != "assign_op":
-            self.errors += " non-type error: assignment statement missing '='"
+            #self.errors += " non-type error: assignment statement missing '='"
             if not self.flags.inProgBlock:
-                self.errors += "non-type error: statement only allowed in program block"
+            #    self.errors += "non-type error: statement only allowed in program block"
+                no=1
             return
         if self.j >= (l-2):
-            self.errors += " non-type error: missing rvalue"
+            no=1#self.errors += " non-type error: missing rvalue"
         else:
             self._increment()
             self._expr()
@@ -438,7 +456,7 @@ class TypeChecker:
             self.flags.errors += 1
         self.flags.resetType()
         if not self.flags.inProgBlock:
-            self.errors += "non-type error: statement only allowed in program block"
+            no=1#self.errors += "non-type error: statement only allowed in program block"
 
     def _program(self):
         if self.token == "{":
@@ -475,7 +493,7 @@ class TypeChecker:
 
     def _skipToEndOfLine(self):
         l = len(self.prog[self.i]) - 1
-        toktype = check(self.token)
+        toktype = check(self.token,self.symbols)
         while self.j < l:
             if isType(self.token):
                 self._checkType()
@@ -484,8 +502,8 @@ class TypeChecker:
             elif toktype == "int":#self.token.isdigit():
                 self.flags.int = True
             self._increment()
-        if self.token not in [';','COM']:
-            self.errors += " non-type error: missing EOL token."
+        if self.token not in [';','COM'] and "EOL" not in self.errors:
+            no=1#self.errors += " non-type error: missing EOL token."
 
     # id | var | "( expr ")"
     def _simple_expr(self):
@@ -498,11 +516,23 @@ class TypeChecker:
             else:
                 self.flags.float = True
         elif next == "open_paren":
-            self._increment()
-            self._expr()
+            self.parenStack.append(1)
+            while next != "close_paren":
+                if next == 'semicolon' and len(self.parenStack)>0:
+                    no=1#self.errors += " non-type error: missing ')'"
+                    self.parenStack[:]=[]
+                    return
+                self._increment()
+                self._expr()
+                next = self._getNextTokenCode()
+            self.parenStack.pop()
         elif self._getNextToken() in self.symbols:
             self._checkType()
-
+        elif next == "add_op" or next == "multiply_op" and "missing" not in self.errors \
+                and check(self.token,self.symbols) != 'UNDEF':
+            no=1#self.errors += " non-type error: malformed statement."
+        if next not in ["add_op","multiply_op",'semicolon','','UNDEF']:
+            self._increment()
 
 
 
@@ -510,24 +540,35 @@ class TypeChecker:
     def _mul_expr(self):
         self._simple_expr()
         next = self._getNextTokenCode()
-        if next == "UNDEF" and "symbol table" not in self.errors:
+        '''if next == "UNDEF" and next != "multiply_op" and next != "add_op" \
+                or self.token not in self.symbols and \
+                "symbol table" not in self.errors and \
+                self.token not in self.symbols and check(self.token,self.symbols) != "string":'''
+        if self.token not in self.symbols and check(self.token,self.symbols) == False:
             self.errors += " type error: contains variable not in symbol table."
             self.flags.errors += 1
-        if next == "multiply_op":
+
+        while next == "multiply_op":
             self._increment()
+            next = self._getNextToken()
+            if self.token in ['%','/'] and next in ['0','0.0'] and "zero" not in self.errors:
+                no=1#self.errors += " non-type error: division by zero"
             self._mul_expr()
+            next = self._getNextTokenCode()
+        #self._increment()
 
     # add_expr --> mul_expr {("+"|"-" mul_expr}
     def _add_expr(self):
         self._mul_expr()
-        self._increment()
+        #self._increment()
         next = self._getNextTokenCode()
         if next == "UNDEF" and "symbol table" not in self.errors:
             self.errors += " type error: contains variable not in symbol table."
             self.flags.errors += 1
-        if next == "add_op":
+        while next == "add_op":
             self._increment()
             self._mul_expr()
+            next = self._getNextTokenCode()
 
     # expr --> add_expr
     def _expr(self):
