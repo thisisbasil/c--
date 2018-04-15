@@ -20,7 +20,9 @@ Basil Huffman
 
     Since this is a simple language, it will only allow one statement
     (or, in the case of loops and conditionals, one sub-statement) per
-    line. So, in practice, this language is a hybrid of Pascal (var
+    line. e.g. 'if X: {' must be split, the '{' must occupy a line to itself
+
+    So, in practice, this language is a hybrid of Pascal (var
     declaration block occurring before the pprogrammatic block), C
     (syntax and typing), and Python.
 
@@ -28,6 +30,8 @@ Basil Huffman
     are treated as both a type and a symbol
 
  3. only assignments are allowed for booleans
+
+ 4. Comments are preceded by '//' and may only occur at the beginning of a line
 
  Caveats:
 
@@ -62,25 +66,6 @@ codes={"undefined":"unrecognized symbol. ",
 	   "invalid":"invalid symbol. ",
 	   "redefined":"symbol already defined. "}
 vblock=["int","float","//","boolean",";","}"]
-
-"""
-Syntax errors to check for:
-
-- Proper nesting: check
-- Proper characters in symbols: check
-- No logic in var dec block:
-- No var defn in prog block: check
-- Proper if-then-else:
-	+ no parenthesis (according to grammar)?:
-	+ bool statement:
-	+ must have colon and braces:
-	+ "else:" :
- 	+ end if:
-- second block of code after var declaration:
-- print/read parens: check.5
-
-"""
-
 
 def isOpen(token):
 	if token == '(' or token == '{':
@@ -328,6 +313,8 @@ class TypeChecker:
                 self.token = "COM"
             else:
                 self.token = "END"
+        if self.token == "COM":
+            self._increment()
 
     # bool_stmt --> and_stmt | rel_stmt | boolean
     def _bool_stmt(self):
@@ -371,9 +358,32 @@ class TypeChecker:
 
         for i in and_stmts:
             rel_stmt = self._check_rel_stmts(i)
+            if len(i) == 1 and not is_bool(i[0],self.symbols):
+                self.flags.errors += 1
+                if "evaluate" not in self.errors:
+                    self.errors += " type error: expression must evaluate to boolean."
             j=1
+        self._skipToEndOfLine()
+        if len(self.errors) != 0:
+            print(repr(self.i+1).zfill(self.width)+self.errors)
+            self.errors = ""
+        if self.token != ':':
+            no=1 #self.errors += " non-type error: mising EOL token."
+        self._increment()
+        self._program()
+        if self._getNextToken() == 'else':
+            self._increment()
+            self._skipToEndOfLine()
+            self._increment()
+            self._program()
+#            self._increment()
+#        self._increment()
+        if self._getNextToken() != 'end_if':
+            no=1 # self.errors += " non-type error: non-terminated IF statement."
+        self._increment()
 
-
+    def _else_stmt(self):
+        no=1
 
     def _while_stmt(self):
         if not self.flags.inProgBlock:
