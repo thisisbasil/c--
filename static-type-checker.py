@@ -136,6 +136,13 @@ def isType(token):
 		return True
 	return False
 
+def is_bool(n,tbl):
+    if n in ['0','1']:
+        return True
+    if n in tbl and tbl[n] in ['var_code_boolean','boolean']:
+        return True
+    return False
+
 def is_int(n):
     #return isinstance(n,int)
     return n.isdigit()
@@ -322,17 +329,65 @@ class TypeChecker:
             else:
                 self.token = "END"
 
+    # bool_stmt --> and_stmt | rel_stmt | boolean
+    def _bool_stmt(self):
+        if is_bool(self.token,self.symbols):
+            self._increment()
+            return
+
+    def _check_and_stmts(self):
+        line = self.prog[self.i]
+        prev = 1
+        stmts=[]
+        temp=[]
+        for i in range(1,len(line)):
+            tok = line[i]
+            if tok in ['and','or',':'] or i == (len(line)-1):
+                stmts.append(temp)
+                temp = []
+                continue
+            temp.append(line[i])
+        i=1
+        return stmts
+
+    def _check_rel_stmts(self,and_stmt):
+        stmts = []
+        temp = []
+        for i in range(len(and_stmt)):
+            tok = and_stmt[i]
+            if tok not in ['>','<','==','>=','(',')']:
+                temp.append(and_stmt[i])
+            if tok in ['>','<','==','>='] or i == (len(and_stmt)-1):
+                stmts.append(temp)
+                temp=[]
+                continue
+        return stmts
+
     def _if_stmt(self):
         if not self.flags.inProgBlock:
             no=1#self.errors += "non-type error: statement only allowed in program block"
+
+        and_stmts = self._check_and_stmts()
+
+        for i in and_stmts:
+            rel_stmt = self._check_rel_stmts(i)
+            j=1
+
+
 
     def _while_stmt(self):
         if not self.flags.inProgBlock:
             no=1#self.errors += "non-type error: statement only allowed in program block"
 
     def _write_stat(self):
+        self.flags.resetType()
         if not self.flags.inProgBlock:
             no=1#self.errors += "non-type error: statement only allowed in program block"
+        self._expr()
+        if not self.flags.checkTypes():
+            self.errors += " type error: incompatible types"
+            self.flags.errors += 1
+        self.flags.resetType()
 
 
     # read --> "(" var ")"
@@ -376,7 +431,8 @@ class TypeChecker:
         #sys.stdout.write("var_dec")
         type = returnType(self.token)
         next = self._getNextToken()
-        if next not in self.symbols and next not in reserved and checkSymbolName(next):
+        if next not in self.symbols and next not in reserved and checkSymbolName(next) \
+                and self.flags.inVarBlock:
             self.symbols[next] = types[type]
         else:
             if next in self.symbols:
