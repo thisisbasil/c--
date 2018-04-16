@@ -380,6 +380,60 @@ class TypeChecker:
                     float = 1
         return float,int,bool_
 
+    # similar to _if_stat but delimiters are while ... do ... end while
+    def _while_stmt(self):
+        if not self.flags.inProgBlock:
+            no=1 #self.errors += "non-type error: statement only allowed in program block"
+
+        and_stmts = self._check_and_stmts()
+
+        for i in and_stmts:
+            rel_stmt = self._check_rel_stmts(i)
+            l = len(rel_stmt)
+            if l == 1:# and not is_bool(i[0],self.symbols):
+                temp = check(i[0],self.symbols)
+                if temp == 'int' and i[0] not in ['0','1'] \
+                and "evaluate" not in self.errors:
+                    self.flags.errors += 1
+                    self.errors += " type error: expression must evaluate to boolean."
+            else:
+                rhs = rel_stmt[1]
+                lhs = rel_stmt[0]
+                floatr,intr,bool = self._checkSide(rhs)
+                r = floatr+intr
+                if r != 1 and "incompatible" not in self.errors:
+                    self.flags.errors += 1
+                    self.errors += ' type error: incompatible types.'
+                floatl,intl,bool = self._checkSide(lhs)
+                l=floatl+intl
+                rbool = False
+                lbool = False
+                if len(rhs) == 1 and intr == 1 and rhs[0] in ['0','1']:
+                    rbool = True
+                if len(lhs) == 1 and intl == 1 and lhs[0] in ['0','1']:
+                    lbool = True
+                if l != 1 and "incompatible":
+                    self.flags.errors += 1
+                    self.errors += ' type error: incompatible types.'
+                if l != r:
+                    if "expression" not in self.errors:
+                        self.errors += " type error: expression must evaluate to boolean."
+                        self.flags.errors
+                #else:
+
+
+        self._skipToEndOfLine()
+        if len(self.errors) != 0:
+            print(repr(self.i+1).zfill(self.width)+self.errors)
+            self.errors = ""
+        if self.token != 'do':
+            no=1 #self.errors += " non-type error: mising EOL token."
+        self._increment()
+        self._program()
+        if self._getNextToken() != 'end_while':
+            no=1 # self.errors += " non-type error: non-terminated IF statement."
+        self._increment()
+
 
     def _if_stmt(self):
         if not self.flags.inProgBlock:
@@ -440,13 +494,6 @@ class TypeChecker:
         if self._getNextToken() != 'end_if':
             no=1 # self.errors += " non-type error: non-terminated IF statement."
         self._increment()
-
-    def _else_stmt(self):
-        no=1
-
-    def _while_stmt(self):
-        if not self.flags.inProgBlock:
-            no=1#self.errors += "non-type error: statement only allowed in program block"
 
     def _write_stat(self):
         self.flags.resetType()
@@ -589,16 +636,13 @@ class TypeChecker:
             #print(repr(self.i+1).zfill(self.width)+" open_paren")
             self._increment()
         while(True):
-            #sys.stdout.write(repr(self.i+1).zfill(self.width)+" ")
             if self.token == "}":
                 self._checkBrace()
                 #print("close_paren")
                 break
             elif self.token == "if":
-                self.flags.isBoolStmt = True
                 self._if_stmt()
             elif self.token == "while":
-                self.flags.isBoolStmt = True
                 self._while_stmt()
             elif self.token == "print":
                 self._write_stat()
