@@ -51,7 +51,7 @@ reserved = {'int':'type','boolean':'type','float':'type',
         '*':'multiply_op', '/':'multiply_op','%':'multiply_op',
         '+':'add_op','-':'add_op', ';':'semicolon',
         'read':'read_stat', 'print':'write_stat','and':'and_stmt',
-        'or':'or_stmt','>':'rel_stmt','<':'rel_stmt','>=':'rel_stmt',
+        'or':'or_stmt','>':'rel_stmt','<':'rel_stmt','>=':'rel_stmt','!=':'rel_stmt',
         '==':'rel_stmt','(':'open_paren',')':'close_paren',
         '{':'open_brace', '}':'close_brace', '//':'comment',';':'semicolon'}
 types={0:"var_code_int", 1:"var_code_float", 2:"var_code_boolean"}
@@ -93,6 +93,7 @@ def generateTokens(string):
     #string = re.sub(r'\n+','\n',string)
     string = re.sub(r'==','__--__--__',string)
     string = re.sub(r'>=','&&&&&',string)
+    string = re.sub(r'!=','%%%%%',string)
     string = re.sub(r'=', ' = ', string)
     string = re.sub(r'__--__--__',' == ', string)
     string = re.sub(r'\(',' ( ',string)
@@ -110,6 +111,7 @@ def generateTokens(string):
     string = re.sub(r'end while', 'end_while',string)
     string = re.sub(r'end if','end_if',string)
     string = re.sub(r'&&&&&',' >= ',string)
+    string = re.sub(r'%%%%%',' != ',string)
     temp = string.split('\n')
     for line in temp:
         retval.append(line.split())
@@ -344,9 +346,9 @@ class TypeChecker:
         temp = []
         for i in range(len(and_stmt)):
             tok = and_stmt[i]
-            if tok not in ['>','<','==','>=','(',')']:
+            if tok not in ['>','<','==','>=','!=','(',')']:
                 temp.append(and_stmt[i])
-            if tok in ['>','<','==','>='] or i == (len(and_stmt)-1):
+            if tok in ['>','<','==','>=','!='] or i == (len(and_stmt)-1):
                 stmts.append(temp)
                 temp=[]
                 continue
@@ -376,7 +378,7 @@ class TypeChecker:
                     int = 1
                 elif type in ['float','var_code_float']:
                     float = 1
-        return float,int
+        return float,int,bool_
 
 
     def _if_stmt(self):
@@ -387,7 +389,7 @@ class TypeChecker:
 
         for i in and_stmts:
             rel_stmt = self._check_rel_stmts(i)
-            l = len(i)
+            l = len(rel_stmt)
             if l == 1:# and not is_bool(i[0],self.symbols):
                 temp = check(i[0],self.symbols)
                 if temp == 'int' and i[0] not in ['0','1'] \
@@ -397,12 +399,12 @@ class TypeChecker:
             else:
                 rhs = rel_stmt[1]
                 lhs = rel_stmt[0]
-                floatr,intr = self._checkSide(rhs)
+                floatr,intr,bool = self._checkSide(rhs)
                 r = floatr+intr
                 if r != 1 and "incompatible" not in self.errors:
                     self.flags.errors += 1
-                    self.errors += ' type error: incompatible types'
-                floatl,intl = self._checkSide(lhs)
+                    self.errors += ' type error: incompatible types.'
+                floatl,intl,bool = self._checkSide(lhs)
                 l=floatl+intl
                 rbool = False
                 lbool = False
@@ -412,7 +414,7 @@ class TypeChecker:
                     lbool = True
                 if l != 1 and "incompatible":
                     self.flags.errors += 1
-                    self.errors += ' type error: incompatible types'
+                    self.errors += ' type error: incompatible types.'
                 if l != r:
                     if "expression" not in self.errors:
                         self.errors += " type error: expression must evaluate to boolean."
@@ -452,7 +454,7 @@ class TypeChecker:
             no=1#self.errors += "non-type error: statement only allowed in program block"
         self._expr()
         if not self.flags.checkTypes():
-            self.errors += " type error: incompatible types"
+            self.errors += " type error: incompatible types."
             self.flags.errors += 1
         self.flags.resetType()
 
@@ -481,7 +483,7 @@ class TypeChecker:
             self._increment()
             if self.token in ['=','-','+','*','/','%'] and "assignment" not in self.errors:
                 no=1#self.errors += " non-type error: assignment/arithmetic not allowed. "
-            elif self.token in ['>','<','>=','=='] and "relational" not in self.errors:
+            elif self.token in ['>','<','>=','!=','=='] and "relational" not in self.errors:
                 no=1#self.errors += " non-type error: relational statements not allowed."
             elif "symbol" not in self.errors and \
                     self.token not in self.symbols and self.token != ')':
@@ -554,7 +556,7 @@ class TypeChecker:
         l = len(self.prog[self.i])
 
         if self.token not in self.symbols:
-            self.errors += " error: contains variable not in symbol table "
+            self.errors += " error: contains variable not in symbol table."
 
         self._checkType()
 
@@ -575,7 +577,7 @@ class TypeChecker:
         self._skipToEndOfLine()
 
         if not self.flags.checkTypes():
-            self.errors += " type error: incompatible types"
+            self.errors += " type error: incompatible types."
             self.flags.errors += 1
         self.flags.resetType()
         if not self.flags.inProgBlock:
