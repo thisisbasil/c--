@@ -46,80 +46,82 @@ import string
 
 #	Constants: reserved words table and types table
 reserved = {'int':'type','boolean':'type','float':'type',
-	    'if':'if_stmt','while':'while_stmt','do':'while_stmt','else':'if_stmt',
-		'end':'if_stmt', ':':'if_stmt','=':'assign_op',
-		'*':'multiply_op', '/':'multiply_op','%':'multiply_op',
-		'+':'add_op','-':'add_op', ';':'semicolon',
-		'read':'read_stat', 'print':'write_stat','and':'and_stmt',
-		'or':'or_stmt','>':'rel_stmt','<':'rel_stmt','>=':'rel_stmt',
-		'==':'rel_stmt','(':'open_paren',')':'close_paren',
-		'{':'open_brace', '}':'close_brace', '//':'comment',';':'semicolon'}
+        'if':'if_stmt','while':'while_stmt','do':'while_stmt','else':'if_stmt',
+        'end':'if_stmt', ':':'if_stmt','=':'assign_op',
+        '*':'multiply_op', '/':'multiply_op','%':'multiply_op',
+        '+':'add_op','-':'add_op', ';':'semicolon',
+        'read':'read_stat', 'print':'write_stat','and':'and_stmt',
+        'or':'or_stmt','>':'rel_stmt','<':'rel_stmt','>=':'rel_stmt',
+        '==':'rel_stmt','(':'open_paren',')':'close_paren',
+        '{':'open_brace', '}':'close_brace', '//':'comment',';':'semicolon'}
 types={0:"var_code_int", 1:"var_code_float", 2:"var_code_boolean"}
 codes={"undefined":"unrecognized symbol. ",
-	   "wrong_block":"statement not permitted in block. ",
-	   "begin_var":"beginning of var declaration block. ",
-	   "end_var": "end of var declaration block. ",
-	   "begin_stmt":"beginning of statement block. ",
-	   "end_stmt":"end of statement block. ",
-	   "no_symbol":"no valid variable symbol given. ",
-	   "no_semi":"missing semicolon. ",
-	   "invalid":"invalid symbol. ",
-	   "redefined":"symbol already defined. "}
+       "wrong_block":"statement not permitted in block. ",
+       "begin_var":"beginning of var declaration block. ",
+       "end_var": "end of var declaration block. ",
+       "begin_stmt":"beginning of statement block. ",
+       "end_stmt":"end of statement block. ",
+       "no_symbol":"no valid variable symbol given. ",
+       "no_semi":"missing semicolon. ",
+       "invalid":"invalid symbol. ",
+       "redefined":"symbol already defined. "}
 vblock=["int","float","//","boolean",";","}"]
 
 def isOpen(token):
-	if token == '(' or token == '{':
-		return True
-	return False
+    if token == '(' or token == '{':
+        return True
+    return False
 
 def isClose(token):
-	if token == ')' or token == '}':
-		return True;
-	return False;
+    if token == ')' or token == '}':
+        return True;
+    return False;
 
 def matchingTokens(token1, token2):
-	if token1 == '(' and token2 == ')':
-		return True
-	if token1 == '{' and token2 == '}':
-		return True
-	return False
+    if token1 == '(' and token2 == ')':
+        return True
+    if token1 == '{' and token2 == '}':
+        return True
+    return False
 
 #TODO: very ugly, condense
 def generateTokens(string):
-	retval=[]
-	string = re.sub(r';',' ;', string)
-	string = re.sub(r'{', ' { ', string)
-	string = re.sub(r'}', ' } ', string)
-	#string = re.sub(r'\n+','\n',string)
-	string = re.sub(r'==','__--__--__',string)
-	string = re.sub(r'=', ' = ', string)
-	string = re.sub(r'__--__--__',' == ', string)
-	string = re.sub(r'\(',' ( ',string)
-	string = re.sub(r'\)',' ) ',string)
-	string = re.sub(r'\+',' + ',string)
-	string = re.sub(r'//','__--__--__',string)
-	string = re.sub(r'/',' / ',string)
-	string = re.sub(r'__--__--__',' // ',string)
-	string = re.sub(r'-',' - ',string)
-	string = re.sub(r'\*',' * ',string)
-	string = re.sub(r'%',' % ',string)
-	string = re.sub(r'>',' > ',string)
-	string = re.sub(r'<',' < ',string)
-	string = re.sub(r':',' : ',string)
-	string = re.sub(r'end while', 'end_while',string)
-	string = re.sub(r'end if','end_if',string)
-	temp = string.split('\n')
-	for line in temp:
-		retval.append(line.split())
-	return retval
+    retval=[]
+    string = re.sub(r';',' ;', string)
+    string = re.sub(r'{', ' { ', string)
+    string = re.sub(r'}', ' } ', string)
+    #string = re.sub(r'\n+','\n',string)
+    string = re.sub(r'==','__--__--__',string)
+    string = re.sub(r'>=','&&&&&',string)
+    string = re.sub(r'=', ' = ', string)
+    string = re.sub(r'__--__--__',' == ', string)
+    string = re.sub(r'\(',' ( ',string)
+    string = re.sub(r'\)',' ) ',string)
+    string = re.sub(r'\+',' + ',string)
+    string = re.sub(r'//','__--__--__',string)
+    string = re.sub(r'/',' / ',string)
+    string = re.sub(r'__--__--__',' // ',string)
+    string = re.sub(r'-',' - ',string)
+    string = re.sub(r'\*',' * ',string)
+    string = re.sub(r'%',' % ',string)
+    string = re.sub(r'>',' > ',string)
+    string = re.sub(r'<',' < ',string)
+    string = re.sub(r':',' : ',string)
+    string = re.sub(r'end while', 'end_while',string)
+    string = re.sub(r'end if','end_if',string)
+    string = re.sub(r'&&&&&',' >= ',string)
+    temp = string.split('\n')
+    for line in temp:
+        retval.append(line.split())
+    return retval
 
 def checkSymbolName(symbol,search=re.compile(r'[^a-zA-z]').search):
-	return not bool(search(symbol))
+    return not bool(search(symbol))
 
 def isType(token):
-	if token == 'int' or token == 'boolean' or token == 'float':
-		return True
-	return False
+    if token == 'int' or token == 'boolean' or token == 'float':
+        return True
+    return False
 
 def is_bool(n,tbl):
     if n in ['0','1']:
@@ -157,29 +159,29 @@ def check(n,tbl):
                 return tbl[n]
 
 def checkNesting(stack,curr):
-	if isOpen(curr):
-		stack.append(curr)
-	elif isClose(curr):
-		if len(stack) == 0:
-			sys.stdout.write(" ERROR: brace mismatch")
-		else:
-			temp = stack.pop()
-			if not matchingTokens(temp,curr):
-				sys.stdout.write(" ERROR: brace mismatch")
-				stack.append(temp)
-	return stack
+    if isOpen(curr):
+        stack.append(curr)
+    elif isClose(curr):
+        if len(stack) == 0:
+            sys.stdout.write(" ERROR: brace mismatch")
+        else:
+            temp = stack.pop()
+            if not matchingTokens(temp,curr):
+                sys.stdout.write(" ERROR: brace mismatch")
+                stack.append(temp)
+    return stack
 
 def getNumTokens(tokens,i,j,numlines,numtokens):
-	if j == (numtokens-1):
-		if i < (numlines - 1):
-			return tokens[i+1][0]
-	else:
-		next = tokens[i][j+1]
+    if j == (numtokens-1):
+        if i < (numlines - 1):
+            return tokens[i+1][0]
+    else:
+        next = tokens[i][j+1]
 
 def isType(token):
-	if token in ['int','float','boolean']:
-		return True
-	return False
+    if token in ['int','float','boolean']:
+        return True
+    return False
 
 def returnType(type):
     if type == "int":
@@ -350,6 +352,33 @@ class TypeChecker:
                 continue
         return stmts
 
+    def _checkSide(self,side):
+        j=1
+        float=0
+        int = 0
+        bool = 0
+        bool_ = 0
+        if isinstance(side,str):
+            type = check(side,self.symbols)
+            if type == 'int':
+                int = 1
+            elif type == 'float':
+                float = 1
+            if type == 'int' and side in ['0','1']:
+                bool_ = 1
+        else:
+            for i in side:
+                type = check(i, self.symbols)
+                if type == 'string':
+                    # error if not arithmetic
+                    continue
+                if type in ['int','var_code_int']:
+                    int = 1
+                elif type in ['float','var_code_float']:
+                    float = 1
+        return float,int
+
+
     def _if_stmt(self):
         if not self.flags.inProgBlock:
             no=1#self.errors += "non-type error: statement only allowed in program block"
@@ -358,11 +387,39 @@ class TypeChecker:
 
         for i in and_stmts:
             rel_stmt = self._check_rel_stmts(i)
-            if len(i) == 1 and not is_bool(i[0],self.symbols):
-                self.flags.errors += 1
-                if "evaluate" not in self.errors:
+            l = len(i)
+            if l == 1:# and not is_bool(i[0],self.symbols):
+                temp = check(i[0],self.symbols)
+                if temp == 'int' and i[0] not in ['0','1'] \
+                and "evaluate" not in self.errors:
+                    self.flags.errors += 1
                     self.errors += " type error: expression must evaluate to boolean."
-            j=1
+            else:
+                rhs = rel_stmt[1]
+                lhs = rel_stmt[0]
+                floatr,intr = self._checkSide(rhs)
+                r = floatr+intr
+                if r != 1 and "incompatible" not in self.errors:
+                    self.flags.errors += 1
+                    self.errors += ' type error: incompatible types'
+                floatl,intl = self._checkSide(lhs)
+                l=floatl+intl
+                rbool = False
+                lbool = False
+                if len(rhs) == 1 and intr == 1 and rhs[0] in ['0','1']:
+                    rbool = True
+                if len(lhs) == 1 and intl == 1 and lhs[0] in ['0','1']:
+                    lbool = True
+                if l != 1 and "incompatible":
+                    self.flags.errors += 1
+                    self.errors += ' type error: incompatible types'
+                if l != r:
+                    if "expression" not in self.errors:
+                        self.errors += " type error: expression must evaluate to boolean."
+                        self.flags.errors
+                #else:
+
+
         self._skipToEndOfLine()
         if len(self.errors) != 0:
             print(repr(self.i+1).zfill(self.width)+self.errors)
