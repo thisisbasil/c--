@@ -49,8 +49,8 @@ Basil Huffman
     is *NOT* added to the symbol table
 
  2. Although semantic errors are sorta checked for in certain cases (the only place where 
-    it effects things is in declarations) due to time restrictions ** AS WELL AS A 
-    LACK OF RESPONSE VIS A VIS CLARIFICATION IN THIS REGARD FROM DR BELLAACHIA **, it is
+    it effects things is in declarations) due to time restrictions **AS WELL AS A 
+    LACK OF RESPONSE VIS A VIS CLARIFICATION IN THIS REGARD FROM DR BELLAACHIA**, it is
     assumed that there will be **NO SYNTAX ERRORS** and this will purely focus on type 
     checking. At a later date, full syntax checking will be implemented (mainly in if and
     while)
