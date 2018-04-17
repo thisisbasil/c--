@@ -1,72 +1,61 @@
-# lexical_analyzer_c--
+# static type checker
 
- Basil Huffman
+
+Basil Huffman
  bahuffma@gwmail.gwu.edu
 
- The following assumptions were made after reading the grammar and sample data,
- and speaking after with Dr. Bellaachia regarding clarification:
+ Changes to grammar:
 
- - Comments are single line only, prefaced by //, all comments ignored i.e. stripped out
- - Only one statement allowed per line, except comments succeeding a statement
- - as corollary, multiple statements present in one line will be split into two lines:
-  
- 	```int a; boolean b;```
-  
- 	becomes
+ 1. In the given grammar, the following is given:
 
- 	```
-  int a;
- 	boolean b;
-  ```
-  
- 	and line numbers will change accordingly
+    read_expr --> "(" expr ")" ";"
 
- - C-- is like Pascal in that the opening block contains nothing but declarations,
-   while the second block acts as the programmatic code, in which variable declarations
-   are not allowed
- - All blank lines are igored, line numbers are based on lines containing symbols
- - Syntax checking for tokens not residing inside of a block is limited to messages
-   indicating as such, more in-depth syntax checking done within blocks
- - Statements do not span multiple lines i.e. all lines must terminate with a semicolon ( ; ),
-   unless the line is one of the following special cases:
-   + a comment
-   + an open block ( { )
-   + a close block ( } )
-   + the EOL of an if expression, which ends in ( : ). From what I gather, the syntax of an if
-     statement is:
+    This makes no sense, as the following statement is allowed:
 
-     	```
-      if bool_stmt :
-     	{
-     					// statement block
-     	}
-     	else: 			//optional
-     	{
-     					// optional statement block
-     	}
-     	end if;
-      ```
+    read_expr(1.2+4);
 
-   + the EOL of a while expression, which ends in ( do ). From what I gather, the syntax of a
-     while statement is:
+    Hence, I am changing the grammar to:
 
-       ```
-        while bool_stmt do
-        {
-    					// statement block
-        }
-        end while;
-      ```
- - as a corollary, a semicolon ( ; ) alone on a line in permitted, acts as a no-op and is
-   allowed in both blocks
- - the first open bracket ( { ) triggers the var declaration block,
-   all subsequent open braces are ignored. the first open brace after the var declaration
-   block triggers the statement block
- - the first close bracket ( } ) triggers the end of the var declaration block. the
-   final close bracket triggers the end of the statement block. if there is no terminating
-   close bracket, a syntax error occurs
- - only two blocks exist: var declaration and statement. any blocks outside of these two
-   will be considered syntax errors
- - sub-blocks can only be defined through if and while statements. a consequence of this is
-   that no sub-blocks can exist within the var declaration block
- - subsequently, symbols will be undefined when encountered in an invalid statement
+    read_expr --> "(" var ")"
+
+    Since this is a simple language, it will only allow one statement
+    (or, in the case of loops and conditionals, one sub-statement) per
+    line. e.g. 'if X: {' must be split, the '{' must occupy a line to itself,
+    the same goes for 'while X do {' statements, where 'while X do' is on
+    one line, '{' is on the next.
+
+    So, in practice, this language is a hybrid of Pascal (var
+    declaration block occurring before the pprogrammatic block), C
+    (syntax and typing), and Python.
+
+ 2. strings (e.g. "a", 'a', "1.1", '1.1') within assignment statements (i.e. a = "1.1")
+    are treated as both a type and a symbol
+
+ 3. only assignments are allowed for booleans
+
+ 4. Comments are preceded by '//' and may only occur at the beginning of a line. they are
+    stripped completely from the file
+
+ 5. for logic statements, a symbol not in the symbol table will generate an "incompatible
+    types" type error as well as a "symbol not in table" error
+
+ 6. boolean assignments can only take the form of <bool> = (0|1), as the grammar disallows
+    anything else. a better option would be to modify the grammar such that <bool> = <bool_stmt>,
+    but there isn't enough time to add this rule and implement it
+
+ Caveats:
+
+ 1. If there are any syntax/semantic errors e.g. no semicolon, improper variable name, the variable
+    is *NOT* added to the symbol table
+
+ 2. Although semantic errors are sorta checked for in certain cases (the only place where 
+    it effects things is in declarations) due to time restrictions *** AS WELL AS A 
+    LACK OF RESPONSE VIS A VIS CLARIFICATION IN THIS REGARD FROM DR BELLAACHIA***, it is
+    assumed that there will be **NO SYNTAX ERRORS*** and this will purely focus on type 
+    checking. At a later date, full syntax checking will be implemented (mainly in if and
+    while)
+
+
+The type checker is run by:
+
+./static_type_cgecker.py <FILE>
