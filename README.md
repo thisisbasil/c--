@@ -122,6 +122,23 @@ rel_stmt ----> simple_expr (">"|"<"|">="|"==") simple_expr
     }
     end while;
     ```
+    
+    3. The program will always have the following format:
+    
+    ```
+    {
+        // Variable declaration block
+        // Non-var declarations not allowed
+        // As is currently implemented, type/syntax errors will
+        //   negate putting the variable in the symbol table
+    }
+    
+    {
+        // Program block
+        // Variable declarations not allows and will not add symbol
+        //   to the symbol table
+    }
+    ```
 
 ### Execution
 
