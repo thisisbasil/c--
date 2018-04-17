@@ -371,13 +371,22 @@ class TypeChecker:
         else:
             for i in side:
                 type = check(i, self.symbols)
-                if type == 'string':
+                if type == 'string' and i not in ['+','-','*','/','%'] \
+                and "symbol" not in self.errors:
+                    self.errors += " type error: symbol not in symbol table."
+                    self.flags.errors += 1
                     # error if not arithmetic
                     continue
                 if type in ['int','var_code_int']:
                     int = 1
                 elif type in ['float','var_code_float']:
                     float = 1
+                if type == 'var_code_boolean':
+                    bool_ = 1
+            if (int + float + bool_) > 1 and "incompatible" not in self.errors:
+                self.errors += " type error: incompatible types. "
+                self.flags.errors += 1
+
         return float,int,bool_
 
     # similar to _if_stat but delimiters are while ... do ... end while
@@ -393,6 +402,7 @@ class TypeChecker:
             if l == 1:# and not is_bool(i[0],self.symbols):
                 temp = check(i[0],self.symbols)
                 if temp == 'int' and i[0] not in ['0','1'] \
+                or temp in ['float','string'] \
                 and "evaluate" not in self.errors:
                     self.flags.errors += 1
                     self.errors += " type error: expression must evaluate to boolean."
@@ -401,25 +411,27 @@ class TypeChecker:
                 lhs = rel_stmt[0]
                 floatr,intr,bool = self._checkSide(rhs)
                 r = floatr+intr
-                if r != 1 and "incompatible" not in self.errors:
-                    self.flags.errors += 1
-                    self.errors += ' type error: incompatible types.'
                 floatl,intl,bool = self._checkSide(lhs)
                 l=floatl+intl
-                rbool = False
+                '''rbool = False
                 lbool = False
                 if len(rhs) == 1 and intr == 1 and rhs[0] in ['0','1']:
                     rbool = True
                 if len(lhs) == 1 and intl == 1 and lhs[0] in ['0','1']:
                     lbool = True
-                if l != 1 and "incompatible":
+                if rbool and lbool:
+                    if i[1] not in ['!=','=='] and "usage":
+                        self.errors += " type error: invalid usage of logical operators for 'boolean'"
+                        self.flags.errors += 1
+                        continue'''
+                if "incompatible" in self.errors and "evaluate" not in self.errors:
+                    self.errors += " type error: expression must evaluate to boolean."
                     self.flags.errors += 1
-                    self.errors += ' type error: incompatible types.'
-                if l != r:
-                    if "expression" not in self.errors:
-                        self.errors += " type error: expression must evaluate to boolean."
-                        self.flags.errors
-                #else:
+                    continue
+                if floatr == 1 and floatl != 1 and "expression" not in self.errors:
+                    self.errors += " type error: expression must evaluate to boolean"
+                    self.flags.errors += 1
+                    continue
 
 
         self._skipToEndOfLine()
@@ -447,6 +459,7 @@ class TypeChecker:
             if l == 1:# and not is_bool(i[0],self.symbols):
                 temp = check(i[0],self.symbols)
                 if temp == 'int' and i[0] not in ['0','1'] \
+                or temp in ['float','string'] \
                 and "evaluate" not in self.errors:
                     self.flags.errors += 1
                     self.errors += " type error: expression must evaluate to boolean."
