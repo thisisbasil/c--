@@ -16,7 +16,7 @@ Basil Huffman
 
     Hence, I am changing the grammar to:
 
-    read_expr --> "(" var ")"
+    read_expr --> "(" var ")" ";"
 
     Since this is a simple language, it will only allow one statement
     (or, in the case of loops and conditionals, one sub-statement) per
@@ -146,22 +146,6 @@ def is_bool(n,tbl):
         return True
     return False
 
-def is_int(n):
-    #return isinstance(n,int)
-    return n.isdigit()
-
-def is_float(n):
-    '''is_number = True
-    try:
-        num = float(n)
-        # check for "nan" floats
-        is_number = (num == num)   # or use `math.isnan(num)`
-    except ValueError:
-        is_number = False
-    return is_number'''
-
-    return isinstance(n,float)
-
 def check(n,tbl):
         if n.isdigit():
             return 'int'
@@ -222,7 +206,6 @@ class Flags:
         self.int = False
         self.bool = False
         self.float = False
-        self.isBoolStmt = False
         self.string = False
         self.undef = True
 
@@ -808,7 +791,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("FILE",help="The file to analyze")
     args = parser.parse_args()
-    file_contents = open(args.FILE,'r').read().strip().lower()
+    file_contents = open(args.FILE,'r').read().lower()
     checker = TypeChecker(stripComments(generateTokens(file_contents)))
     checker.begin()
     checker.end()
