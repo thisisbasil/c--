@@ -40,7 +40,7 @@ Basil Huffman
     types" type error as well as a "symbol not in table" error
 
  6. boolean assignments can only take the form of <bool> = (0|1), as the grammar disallows
-    anything else. a better option would be to modify the grammar such that <bool> = <bool_stmt>,
+    anything else. a better option would be to modify the grammar such that boolean = bool_stmt,
     but there isn't enough time to add this rule and implement it
 
  Caveats:
@@ -49,13 +49,13 @@ Basil Huffman
     is *NOT* added to the symbol table
 
  2. Although semantic errors are sorta checked for in certain cases (the only place where 
-    it effects things is in declarations) due to time restrictions *** AS WELL AS A 
-    LACK OF RESPONSE VIS A VIS CLARIFICATION IN THIS REGARD FROM DR BELLAACHIA***, it is
-    assumed that there will be **NO SYNTAX ERRORS*** and this will purely focus on type 
+    it effects things is in declarations) due to time restrictions ** AS WELL AS A 
+    LACK OF RESPONSE VIS A VIS CLARIFICATION IN THIS REGARD FROM DR BELLAACHIA **, it is
+    assumed that there will be **NO SYNTAX ERRORS** and this will purely focus on type 
     checking. At a later date, full syntax checking will be implemented (mainly in if and
     while)
 
 
 The type checker is run by:
 
-./static_type_cgecker.py <FILE>
+./static_type_checker.py <FILE>
