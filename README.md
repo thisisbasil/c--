@@ -8,21 +8,36 @@ Basil Huffman
 
  1. In the given grammar, the following is given:
 
-    read_expr --> "(" expr ")" ";"
+    `read_expr --> "(" expr ")" ";"`
 
     This makes no sense, as the following statement is allowed:
 
-    read_expr(1.2+4);
+    `read_expr(1.2+4);`
 
     Hence, I am changing the grammar to:
 
-    read_expr --> "(" var ")"
+    `read_expr --> "(" var ")"`
 
     Since this is a simple language, it will only allow one statement
     (or, in the case of loops and conditionals, one sub-statement) per
-    line. e.g. 'if X: {' must be split, the '{' must occupy a line to itself,
-    the same goes for 'while X do {' statements, where 'while X do' is on
-    one line, '{' is on the next.
+    line. e.g. 
+    `if X: {` 
+    
+    must be split, the '{' must occupy a line to itself, e.g.
+    ```
+    if X:
+    {
+     ```
+    the same goes for 'while X do {' statements, where 
+    
+    `while X do {` 
+    
+    is onxone line, '{' is on the next e.g.
+
+    ```
+    while X do
+    {
+    ```
 
     So, in practice, this language is a hybrid of Pascal (var
     declaration block occurring before the pprogrammatic block), C
@@ -39,7 +54,7 @@ Basil Huffman
  5. for logic statements, a symbol not in the symbol table will generate an "incompatible
     types" type error as well as a "symbol not in table" error
 
- 6. boolean assignments can only take the form of <bool> = (0|1), as the grammar disallows
+ 6. boolean assignments can only take the form of `<bool> = (0|1)`, as the grammar disallows
     anything else. a better option would be to modify the grammar such that boolean = bool_stmt,
     but there isn't enough time to add this rule and implement it
 
@@ -58,4 +73,4 @@ Basil Huffman
 
 The type checker is run by:
 
-./static_type_checker.py <FILE>
+`./static_type_checker.py <FILE>`
