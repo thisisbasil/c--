@@ -74,3 +74,6 @@ Basil Huffman
 The type checker is run by:
 
 `./static_type_checker.py <FILE>`
+
+Two test files are included: test.cmm (the sample given in the spec) and test1.cmm. Both should cover
+every type of type error.
