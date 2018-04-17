@@ -33,6 +33,9 @@ Basil Huffman
 
  4. Comments are preceded by '//' and may only occur at the beginning of a line
 
+ 5. for logic statements, a symbol not in the symbol table will generate an "incompatible
+    types" type error as well as a "symbol not in table" error
+
  Caveats:
 
  1. If there are any syntax/semantic errors e.g. no semicolon, improper variable name, the variable
@@ -375,6 +378,7 @@ class TypeChecker:
                 and "symbol" not in self.errors:
                     self.errors += " type error: symbol not in symbol table."
                     self.flags.errors += 1
+                    float = int = bool_ = 1
                     # error if not arithmetic
                     continue
                 if type in ['int','var_code_int']:
@@ -409,10 +413,14 @@ class TypeChecker:
             else:
                 rhs = rel_stmt[1]
                 lhs = rel_stmt[0]
-                floatr,intr,bool = self._checkSide(rhs)
+                floatr,intr,boolr = self._checkSide(rhs)
                 r = floatr+intr
-                floatl,intl,bool = self._checkSide(lhs)
+                floatl,intl,booll = self._checkSide(lhs)
                 l=floatl+intl
+                if "evaluate" in self.errors and \
+                   "symbol" in  self.errors and \
+                   "incompatible" in self.errors:
+                    break
                 '''rbool = False
                 lbool = False
                 if len(rhs) == 1 and intr == 1 and rhs[0] in ['0','1']:
@@ -423,12 +431,19 @@ class TypeChecker:
                     if i[1] not in ['!=','=='] and "usage":
                         self.errors += " type error: invalid usage of logical operators for 'boolean'"
                         self.flags.errors += 1
-                        continue'''
+                        continue
                 if "incompatible" in self.errors and "evaluate" not in self.errors:
                     self.errors += " type error: expression must evaluate to boolean."
                     self.flags.errors += 1
-                    continue
-                if floatr == 1 and floatl != 1 and "expression" not in self.errors:
+                    continue'''
+                ll = len(lhs)
+                lr = len(rhs)
+                if len(lhs) == len(rhs) and len(lhs) == 1:
+                    if is_bool(lhs[0],self.symbols) and is_bool(rhs[0],self.symbols):
+                        if i[1] in ['>','<','>='] and "expression" not in self.errors:
+                            self.errors != " type error: expression must evaluate to boolean."
+                if (floatr == 1 and floatl != 1) or (intr == 1 and intl != 1) \
+                        or (boolr == 1 and booll == 1) and "expression" not in self.errors:
                     self.errors += " type error: expression must evaluate to boolean"
                     self.flags.errors += 1
                     continue
