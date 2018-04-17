@@ -88,7 +88,7 @@ rel_stmt ----> simple_expr (">"|"<"|">="|"==") simple_expr
     anything else. a better option would be to modify the grammar such that boolean = bool_stmt,
     but there isn't enough time to add this rule and implement it
 
- ###Caveats:
+ ### Caveats:
 
  1. If there are any syntax/semantic errors e.g. no semicolon, improper variable name, the variable
     is *NOT* added to the symbol table
