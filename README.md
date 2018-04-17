@@ -123,7 +123,8 @@ rel_stmt ----> simple_expr (">"|"<"|">="|"==") simple_expr
     end while;
     ```
     
-    3. The program will always have the following format:
+    3. As a corollary to not allowing syntax errors, the program will always have the
+       following format:
     
     ```
     {
