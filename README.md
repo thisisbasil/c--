@@ -1,10 +1,40 @@
-# static type checker
+# STATIC TYPE CHECKER
 
 
-Basil Huffman
- bahuffma@gwmail.gwu.edu
+*Basil Huffman*
 
- Changes to grammar:
+*bahuffma@gwmail.gwu.edu*
+
+### The basic grammar:
+
+```
+program ----> {stmt}
+stmt ----> var_dec ";" | assign ";" | read_stat ";" |
+write_stat ";" | if_stmt ";" | while_stmt ";"
+var_dec ----> type var ";"
+assign ----> var "=" expr ";"
+expr ----> add_expr
+add_expr ----> mul_expr {("+"|"-") mul_expr}
+mul_expr ----> simple_expr {("*"|"/"|"%") simple_expr }
+simple_expr ----> id | var | "(" expr ")"
+read_stat ----> "READ" "(" expr ")" ";"
+write_stat ----> "PRINT" "(" expr ")" ";"
+type ----> "int" | "float" | "boolean"
+id ----> intnumber | floatnumber
+intnumber ----> Digit | Digit intnumber
+floatnumber: ----> intnumber "." intnumber
+Digit ----> [0-9]+
+boolean ----> "0" | "1"
+var ----> [A-Z, a-z]+
+block ----> program [ block ]
+if_stmt ----> "if" bool_stmt ":" [block] [ "else:" [block] ] "end if" ";"
+while_stmt ----> "while" bool_stmt "do" [block] "end while" ";"
+bool_stmt ----> and_stmt | rel_stmt |boolean
+and_stmt ----> bool_stmt {("and"|"or") bool_stmt}
+rel_stmt ----> simple_expr (">"|"<"|">="|"==") simple_expr
+```
+
+ ###Changes to grammar:
 
  1. In the given grammar, the following is given:
 
@@ -16,7 +46,7 @@ Basil Huffman
 
     Hence, I am changing the grammar to:
 
-    `read_expr --> "(" var ")"`
+    `read_expr --> "(" var ")" ";"`
 
     Since this is a simple language, it will only allow one statement
     (or, in the case of loops and conditionals, one sub-statement) per
@@ -32,7 +62,7 @@ Basil Huffman
     
     `while X do {` 
     
-    is onxone line, '{' is on the next e.g.
+    is on one line, '{' is on the next e.g.
 
     ```
     while X do
@@ -58,7 +88,7 @@ Basil Huffman
     anything else. a better option would be to modify the grammar such that boolean = bool_stmt,
     but there isn't enough time to add this rule and implement it
 
- Caveats:
+ ###Caveats:
 
  1. If there are any syntax/semantic errors e.g. no semicolon, improper variable name, the variable
     is *NOT* added to the symbol table
@@ -69,7 +99,31 @@ Basil Huffman
     assumed that there will be **NO SYNTAX ERRORS** and this will purely focus on type 
     checking. At a later date, full syntax checking will be implemented (mainly in if and
     while)
+    
+    This mostly means that:
+   
+    1. There will only be **two** main blocks.
+    2. **if/while** statements will **always** have the correct format. That is,
+    
+    ```
+    if bool_stmt:
+    {
+    [block]
+    }
+    end if;
+    ``` 
+    
+    and
+    
+    ```
+    while bool_stmt do
+    {
+    [block]
+    }
+    end while;
+    ```
 
+### Execution
 
 The type checker is run by:
 
