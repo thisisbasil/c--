@@ -20,7 +20,9 @@ Basil Huffman
 
     Since this is a simple language, it will only allow one statement
     (or, in the case of loops and conditionals, one sub-statement) per
-    line. e.g. 'if X: {' must be split, the '{' must occupy a line to itself
+    line. e.g. 'if X: {' must be split, the '{' must occupy a line to itself,
+    the same goes for 'while X do {' statements, where 'while X do' is on
+    one line, '{' is on the next.
 
     So, in practice, this language is a hybrid of Pascal (var
     declaration block occurring before the pprogrammatic block), C
@@ -36,15 +38,19 @@ Basil Huffman
  5. for logic statements, a symbol not in the symbol table will generate an "incompatible
     types" type error as well as a "symbol not in table" error
 
+ 6. boolean assignments can only take the form of <bool> = (0|1), as the grammar disallows
+    anything else. a better option would be to modify the grammar such that <bool> = <bool_stmt>,
+    but there isn't enough time to add this rule and implement it
+
  Caveats:
 
  1. If there are any syntax/semantic errors e.g. no semicolon, improper variable name, the variable
     is *NOT* added to the symbol table
 
  2. Although semantic errors are sorta checked for in certain cases, due to time restrictions *** AS
-    WELL AS A LACK OF RESPONSE VIS A VIS CLARIFICATION IN THIS REGARD ***, it is assumed that there
-    will be **NO SYNTAX ERRORS*** and this will purely focus on type checking. At a later date,
-    full syntax checking will be implemented (mainly in if and while)
+    WELL AS A LACK OF RESPONSE VIS A VIS CLARIFICATION IN THIS REGARD FROM DR BELLAACHIA***, it is
+    assumed that there will be **NO SYNTAX ERRORS*** and this will purely focus on type checking.
+    At a later date, full syntax checking will be implemented (mainly in if and while)
 
 '''
 
@@ -426,21 +432,6 @@ class TypeChecker:
                    "symbol" in  self.errors and \
                    "incompatible" in self.errors:
                     break
-                '''rbool = False
-                lbool = False
-                if len(rhs) == 1 and intr == 1 and rhs[0] in ['0','1']:
-                    rbool = True
-                if len(lhs) == 1 and intl == 1 and lhs[0] in ['0','1']:
-                    lbool = True
-                if rbool and lbool:
-                    if i[1] not in ['!=','=='] and "usage":
-                        self.errors += " type error: invalid usage of logical operators for 'boolean'"
-                        self.flags.errors += 1
-                        continue
-                if "incompatible" in self.errors and "evaluate" not in self.errors:
-                    self.errors += " type error: expression must evaluate to boolean."
-                    self.flags.errors += 1
-                    continue'''
                 ll = len(lhs)
                 lr = len(rhs)
                 if len(lhs) == len(rhs) and len(lhs) == 1:
@@ -486,27 +477,25 @@ class TypeChecker:
             else:
                 rhs = rel_stmt[1]
                 lhs = rel_stmt[0]
-                floatr,intr,bool = self._checkSide(rhs)
+                floatr,intr,boolr = self._checkSide(rhs)
                 r = floatr+intr
-                if r != 1 and "incompatible" not in self.errors:
-                    self.flags.errors += 1
-                    self.errors += ' type error: incompatible types.'
-                floatl,intl,bool = self._checkSide(lhs)
+                floatl,intl,booll = self._checkSide(lhs)
                 l=floatl+intl
-                rbool = False
-                lbool = False
-                if len(rhs) == 1 and intr == 1 and rhs[0] in ['0','1']:
-                    rbool = True
-                if len(lhs) == 1 and intl == 1 and lhs[0] in ['0','1']:
-                    lbool = True
-                if l != 1 and "incompatible":
+                if "evaluate" in self.errors and \
+                   "symbol" in  self.errors and \
+                   "incompatible" in self.errors:
+                    break
+                ll = len(lhs)
+                lr = len(rhs)
+                if len(lhs) == len(rhs) and len(lhs) == 1:
+                    if is_bool(lhs[0],self.symbols) and is_bool(rhs[0],self.symbols):
+                        if i[1] in ['>','<','>='] and "expression" not in self.errors:
+                            self.errors != " type error: expression must evaluate to boolean."
+                if (floatr == 1 and floatl != 1) or (intr == 1 and intl != 1) \
+                        or (boolr == 1 and booll == 1) and "expression" not in self.errors:
+                    self.errors += " type error: expression must evaluate to boolean"
                     self.flags.errors += 1
-                    self.errors += ' type error: incompatible types.'
-                if l != r:
-                    if "expression" not in self.errors:
-                        self.errors += " type error: expression must evaluate to boolean."
-                        self.flags.errors
-                #else:
+                    continue
 
 
         self._skipToEndOfLine()
@@ -641,6 +630,10 @@ class TypeChecker:
         self._checkType()
 
         next = self._getNextTokenCode()
+        if self.flags.bool and "+" in self.prog[self.i] or '-' in self.prog[self.i] \
+           or '*' in self.prog[self.i] or '/' in self.prog[self.i] or '%' in self.prog[self.i]:
+            self.errors += " type error: boolean assignments cannot contain arithmetic."
+            self.flags.errors +=1
 
         if next != "assign_op":
             #self.errors += " non-type error: assignment statement missing '='"
@@ -810,7 +803,16 @@ def stripComments(contents):
         retval.append(line)
     return retval
 
-file_contents = open("test1.cmm", "r").read().lower()
-checker = TypeChecker(stripComments(generateTokens(file_contents)))
-checker.begin()
-checker.end()
+def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("FILE",help="The file to analyze")
+    args = parser.parse_args()
+    file_contents = open(args.FILE,'r').read().strip().lower()
+    checker = TypeChecker(stripComments(generateTokens(file_contents)))
+    checker.begin()
+    checker.end()
+    print()
+
+if __name__ == '__main__':
+    main()
