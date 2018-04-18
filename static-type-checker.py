@@ -535,6 +535,12 @@ class TypeChecker:
     # var --> [A-Za-z]+
     def _read_stat(self):
         #sys.stdout.write("read_stat")
+        if '==' in self.prog[self.i] or '!=' in self.prog[self.i] or '>' in self.prog[self.i] \
+            or '<' in self.prog[self.i] or \
+            '+' in self.prog[self.i] or '-' in self.prog[self.i] or \
+            '*' in self.prog[self.i] or '%' in self.prog[self.i] or '/' in self.prog[self.i]:
+            self.errors += " type error: incompatible types, logic or arithmetic not allowed in read."
+            self.flags.errors += 1
         next = self._getNextTokenCode()
         if next != "open_paren":
             no=1#self.errors += " non-type error: missing '('."

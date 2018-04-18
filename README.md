@@ -17,8 +17,8 @@ expr ----> add_expr
 add_expr ----> mul_expr {("+"|"-") mul_expr}
 mul_expr ----> simple_expr {("*"|"/"|"%") simple_expr }
 simple_expr ----> id | var | "(" expr ")"
-read_stat ----> "READ" "(" expr ")" ";"
-write_stat ----> "PRINT" "(" expr ")" ";"
+read_stat ----> "READ" "(" expr ")"
+write_stat ----> "PRINT" "(" expr ")"
 type ----> "int" | "float" | "boolean"
 id ----> intnumber | floatnumber
 intnumber ----> Digit | Digit intnumber
@@ -58,7 +58,7 @@ rel_stmt ----> simple_expr (">"|"<"|">="|"==") simple_expr
     if X:
     {
      ```
-    the same goes for 'while X do {' statements, where 
+    the same goes for: 
     
     `while X do {` 
     
@@ -87,13 +87,16 @@ rel_stmt ----> simple_expr (">"|"<"|">="|"==") simple_expr
  6. boolean assignments can only take the form of `<bool> = (0|1)`, as the grammar disallows
     anything else. a better option would be to modify the grammar such that boolean = bool_stmt,
     but there isn't enough time to add this rule and implement it
+ 
+ 7. If any arithmetic or logic operations are attempted within a `read( )` operation, 
+    this will be treated as a type error
 
  ### Caveats:
 
  1. If there are any syntax/semantic errors e.g. no semicolon, improper variable name, the variable
     is *NOT* added to the symbol table
 
- 2. Although semantic errors are sorta checked for in certain cases (the only place where 
+ 2. Although semantic errors are somewhat checked for in certain cases (the only place where 
     it effects things is in declarations) due to time restrictions **AS WELL AS A 
     LACK OF RESPONSE VIS A VIS CLARIFICATION IN THIS REGARD FROM DR BELLAACHIA**, it is
     assumed that there will be **NO SYNTAX ERRORS** and this will purely focus on type 
