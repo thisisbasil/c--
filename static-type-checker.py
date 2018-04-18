@@ -106,10 +106,12 @@ def generateTokens(string):
     string = re.sub(r'}', ' } ', string)
     #string = re.sub(r'\n+','\n',string)
     string = re.sub(r'==','__--__--__',string)
-    string = re.sub(r'>=','&&&&&',string)
-    string = re.sub(r'!=','%%%%%',string)
+    string = re.sub(r'>=','--__--__--',string)
+    string = re.sub(r'!=','___---___---',string)
     string = re.sub(r'=', ' = ', string)
     string = re.sub(r'__--__--__',' == ', string)
+    string = re.sub(r'--__--__--',' >= ', string)
+    string = re.sub(r'___---___---',' != ',string)
     string = re.sub(r'\(',' ( ',string)
     string = re.sub(r'\)',' ) ',string)
     string = re.sub(r'\+',' + ',string)
@@ -124,8 +126,6 @@ def generateTokens(string):
     string = re.sub(r':',' : ',string)
     string = re.sub(r'end while', 'end_while',string)
     string = re.sub(r'end if','end_if',string)
-    string = re.sub(r'&&&&&',' >= ',string)
-    string = re.sub(r'%%%%%',' != ',string)
     temp = string.split('\n')
     for line in temp:
         retval.append(line.split())
@@ -215,7 +215,7 @@ class Flags:
         self.bool = False
         self.string = False
 
-    def checkTypes(self):
+    def checkTypes(self,token):
         if self.string:
             return False
         if self.int and not self.float and not self.bool:
@@ -225,6 +225,8 @@ class Flags:
         if self.bool and not self.int and not self.float:
             return True
         if not self.bool and not self.int and not self.float:
+            return True
+        if not self.float and self.int and self.bool and token in ['0','1']:
             return True
         return False
 
@@ -240,6 +242,7 @@ class TypeChecker:
         self.symbols={}
         self.i = self.j = 0
         self.width = len(str(len(self.prog)))
+        self.val = ''
 
     # checks braces to determine which block you're in
     def _checkBrace(self):
@@ -398,7 +401,11 @@ class TypeChecker:
             rel_stmt = self._check_rel_stmts(i)
             l = len(rel_stmt)
             if l == 1:# and not is_bool(i[0],self.symbols):
-                temp = check(i[0],self.symbols)
+                if l == 1:  # and not is_bool(rel_stmt[0],self.symbols):
+                    if not isinstance(rel_stmt[0], str):
+                        temp = check(rel_stmt[0][0], self.symbols)
+                    else:
+                        temp = check(rel_stmt[0], self.symbols)
                 if temp == 'int' and i[0] not in ['0','1'] \
                 or temp in ['float','string'] \
                 and "evaluate" not in self.errors:
@@ -421,6 +428,11 @@ class TypeChecker:
                     if is_bool(lhs[0],self.symbols) and is_bool(rhs[0],self.symbols):
                         if i[1] in ['>','<','>='] and "expression" not in self.errors:
                             self.errors != " type error: expression must evaluate to boolean."
+                    if is_bool(lhs[0],self.symbols) and rhs[0] not in ['0','1'] or \
+                       is_bool(rhs[0],self.symbols) and lhs[0] not in ['0','1'] and \
+                        "incompatible" not in self.errors:
+                        self.errors += " type error: incompatible types."
+                        self.flags.errors += 1
                 if (floatr == 1 and floatl != 1) or (intr == 1 and intl != 1) \
                         or (boolr == 1 and booll == 1) and "expression" not in self.errors:
                     self.errors += " type error: expression must evaluate to boolean"
@@ -450,8 +462,11 @@ class TypeChecker:
         for i in and_stmts:
             rel_stmt = self._check_rel_stmts(i)
             l = len(rel_stmt)
-            if l == 1:# and not is_bool(i[0],self.symbols):
-                temp = check(i[0],self.symbols)
+            if l == 1:# and not is_bool(rel_stmt[0],self.symbols):
+                if not isinstance(rel_stmt[0],str):
+                    temp = check(rel_stmt[0][0],self.symbols)
+                else:
+                    temp = check(rel_stmt[0],self.symbols)
                 if temp == 'int' and i[0] not in ['0','1'] \
                 or temp in ['float','string'] \
                 and "evaluate" not in self.errors:
@@ -474,6 +489,11 @@ class TypeChecker:
                     if is_bool(lhs[0],self.symbols) and is_bool(rhs[0],self.symbols):
                         if i[1] in ['>','<','>='] and "expression" not in self.errors:
                             self.errors != " type error: expression must evaluate to boolean."
+                    if is_bool(lhs[0],self.symbols) and rhs[0] not in ['0','1'] or \
+                       is_bool(rhs[0],self.symbols) and lhs[0] not in ['0','1'] and \
+                        "incompatible" not in self.errors:
+                        self.errors += " type error: incompatible types."
+                        self.flags.errors += 1
                 if (floatr == 1 and floatl != 1) or (intr == 1 and intl != 1) \
                         or (boolr == 1 and booll == 1) and "expression" not in self.errors:
                     self.errors += " type error: expression must evaluate to boolean"
@@ -505,7 +525,7 @@ class TypeChecker:
         if not self.flags.inProgBlock:
             no=1#self.errors += "non-type error: statement only allowed in program block"
         self._expr()
-        if not self.flags.checkTypes():
+        if not self.flags.checkTypes(self.token):
             self.errors += " type error: incompatible types."
             self.flags.errors += 1
         self.flags.resetType()
@@ -629,15 +649,16 @@ class TypeChecker:
         else:
             self._increment()
             self._expr()
-
+        self.val = self.token
         self._skipToEndOfLine()
 
-        if not self.flags.checkTypes():
+        if not self.flags.checkTypes(self.val):
             self.errors += " type error: incompatible types."
             self.flags.errors += 1
         self.flags.resetType()
         if not self.flags.inProgBlock:
             no=1#self.errors += "non-type error: statement only allowed in program block"
+        self.val = ''
 
     def _program(self):
         if self.token == "{":
