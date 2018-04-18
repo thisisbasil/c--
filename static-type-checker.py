@@ -147,7 +147,7 @@ def is_bool(n,tbl):
     return False
 
 def check(n,tbl):
-        if n.isdigit():
+        if n.isdigit() or n in tbl and tbl[n] == 'var_code_int':
             return 'int'
         else:
             try:
@@ -431,6 +431,9 @@ class TypeChecker:
                     if is_bool(lhs[0],self.symbols) and rhs[0] not in ['0','1'] or \
                        is_bool(rhs[0],self.symbols) and lhs[0] not in ['0','1'] and \
                         "incompatible" not in self.errors:
+                        if check(lhs[0],self.symbols) == 'int' and check(rhs[0],self.symbols) == 'int':
+                            break
+
                         self.errors += " type error: incompatible types."
                         self.flags.errors += 1
                 if (floatr == 1 and floatl != 1) or (intr == 1 and intl != 1) \
@@ -492,6 +495,8 @@ class TypeChecker:
                     if is_bool(lhs[0],self.symbols) and rhs[0] not in ['0','1'] or \
                        is_bool(rhs[0],self.symbols) and lhs[0] not in ['0','1'] and \
                         "incompatible" not in self.errors:
+                        if check(lhs[0],self.symbols) == 'int' and check(rhs[0],self.symbols) == 'int':
+                            break
                         self.errors += " type error: incompatible types."
                         self.flags.errors += 1
                 if (floatr == 1 and floatl != 1) or (intr == 1 and intl != 1) \
